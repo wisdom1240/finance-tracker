@@ -25,7 +25,13 @@
                 <li><a href="#">Budgets</a></li>
                 <li><a href="#">Savings</a></li>
                 <li><a href="#">Reports</a></li>
-                <li><a href="#">Logout</a></li>
+                {% if session.get('user_id') %}
+                    <li><span class="nav-user">{{ session.get('user_name') }}</span></li>
+                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                    <li><a href="{{ url_for('register') }}">Register</a></li>
+                {% endif %}
             </ul>
         </nav>
     </header>

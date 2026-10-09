@@ -742,3 +742,13 @@ img {
         font-size: 1.5rem;
     }
 }
+/* 16. NAV USER LABEL */
+.nav-user { color: var(--color-nav-muted); font-size: 0.9375rem; font-weight: 500; }
+
+/* 16. NAV USER LABEL */
+.nav-user {
+    color: var(--color-nav-muted);
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
