@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Register — Finance Tracker{% endblock %}
+
+{% block content %}
+<section class="auth-card">
+    <h1>Create your account</h1>
+    <p class="text-muted">Start tracking your income, expenses and savings goals.</p>
+
+    <form method="POST" action="{{ url_for('register') }}" novalidate>
+        <div class="form-group">
+            <label class="form-label" for="first_name">First name</label>
+            <input class="form-input" type="text" id="first_name" name="first_name" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="last_name">Last name</label>
+            <input class="form-input" type="text" id="last_name" name="last_name" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="email">Email</label>
+            <input class="form-input" type="email" id="email" name="email" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <input class="form-input" type="password" id="password" name="password" required>
+            <p class="form-help">At least 8 characters, with one letter and one number.</p>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="confirm_password">Confirm password</label>
+            <input class="form-input" type="password" id="confirm_password" name="confirm_password" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Create account</button>
+    </form>
+
+    <p class="text-muted mt-6" style="text-align: center; font-size: 0.9375rem;">
+        Already have an account?
+        <a href="#">Log in</a>
+    </p>
+</section>
+{% endblock %}
