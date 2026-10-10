@@ -42,3 +42,13 @@ document.addEventListener("DOMContentLoaded", function () {
         filterCategories();
     }
 });
+
+// ---- Confirm delete forms ----
+document.querySelectorAll("form.delete-form").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+        var msg = form.dataset.confirm || "Are you sure?";
+        if (!window.confirm(msg)) {
+            e.preventDefault();
+        }
+    });
+});

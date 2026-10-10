@@ -128,7 +128,6 @@ def create_app():
         user_id = session["user_id"]
         db = get_db()
 
-        # Load the transaction — MUST belong to this user.
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
             "SELECT id, type, category_id, amount, description, transaction_date "
@@ -142,7 +141,6 @@ def create_app():
         if transaction is None:
             abort(404)
 
-        # Categories for the dropdown
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("SELECT id, name, type FROM categories ORDER BY type, name")
         categories = cur.fetchall()
@@ -226,6 +224,30 @@ def create_app():
             transaction=transaction,
             categories=categories,
         )
+
+    # ----------------------------------------------------------------
+    # Delete Transaction
+    # ----------------------------------------------------------------
+    @app.route("/transactions/<int:transaction_id>/delete", methods=["POST"])
+    @login_required
+    def delete_transaction(transaction_id):
+        user_id = session["user_id"]
+
+        db = get_db()
+        cur = db.cursor()
+        cur.execute(
+            "DELETE FROM transactions WHERE id = %s AND user_id = %s",
+            (transaction_id, user_id),
+        )
+        deleted = cur.rowcount
+        db.commit()
+        cur.close()
+
+        if deleted == 0:
+            abort(404)
+
+        flash("Transaction deleted successfully.", "success")
+        return redirect(url_for("transactions"))
 
     # ----------------------------------------------------------------
     # Add Transaction
