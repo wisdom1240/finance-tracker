@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Reports — Finance Tracker{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <h1>Reports</h1>
+        <p class="text-muted">Income, expenses and category breakdowns for a chosen period.</p>
+    </div>
+</section>
+
+<div class="card mt-6 filter-card">
+    <form method="GET" action="{{ url_for('reports') }}" class="filter-form">
+        <div class="filter-row">
+            <div class="filter-field filter-field-wide">
+                <label class="form-label" for="range">Range</label>
+                <select class="form-select" name="range" id="range" onchange="document.getElementById('customRange').style.display = this.value === 'custom' ? 'grid' : 'none';">
+                    <option value="this_month" {% if filters.range == 'this_month' %}selected{% endif %}>This month</option>
+                    <option value="last_month" {% if filters.range == 'last_month' %}selected{% endif %}>Last month</option>
+                    <option value="this_year"  {% if filters.range == 'this_year'  %}selected{% endif %}>This year</option>
+                    <option value="all_time"   {% if filters.range == 'all_time'   %}selected{% endif %}>All time</option>
+                    <option value="custom"     {% if filters.range == 'custom'     %}selected{% endif %}>Custom range</option>
+                </select>
+            </div>
+
+            <div class="filter-field">
+                <label class="form-label" for="from">From</label>
+                <input class="form-input" type="date" name="from" id="from" value="{{ filters.from }}">
+            </div>
+
+            <div class="filter-field">
+                <label class="form-label" for="to">To</label>
+                <input class="form-input" type="date" name="to" id="to" value="{{ filters.to }}">
+            </div>
+        </div>
+
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary">Generate report</button>
+            <a href="{{ url_for('reports') }}" class="btn btn-ghost">Reset</a>
+        </div>
+    </form>
+</div>
+
+<section class="report-summary mt-6">
+    <div class="card-row">
+        <div class="metric metric-income">
+            <div class="metric-label">Income</div>
+            <div class="metric-value positive">₦{{ "{:,.2f}".format(total_income) }}</div>
+        </div>
+        <div class="metric metric-expense">
+            <div class="metric-label">Expenses</div>
+            <div class="metric-value negative">₦{{ "{:,.2f}".format(total_expenses) }}</div>
+        </div>
+        <div class="metric metric-balance">
+            <div class="metric-label">Net</div>
+            <div class="metric-value {% if net < 0 %}negative{% endif %}">
+                ₦{{ "{:,.2f}".format(net) }}
+            </div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Transactions</div>
+            <div class="metric-value">{{ transaction_count }}</div>
+        </div>
+    </div>
+    <p class="text-muted mt-4" style="font-size: 0.875rem;">
+        {{ date_from }} → {{ date_to }}
+    </p>
+</section>
+
+{% if category_breakdown %}
+    <div class="card mt-6">
+        <h3 class="card-title">Spending by Category</h3>
+        <div class="breakdown">
+            {% for c in category_breakdown %}
+                <div class="breakdown-row">
+                    <div class="breakdown-label">
+                        <span class="badge badge-category">{{ c.category_name }}</span>
+                    </div>
+                    <div class="breakdown-bar">
+                        <div class="breakdown-bar-fill"
+                             style="width: {{ c.percent }}%"></div>
+                    </div>
+                    <div class="breakdown-value">
+                        ₦{{ "{:,.2f}".format(c.total) }}
+                        <span class="text-muted">({{ "%.0f"|format(c.percent) }}%)</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% else %}
+    <div class="card mt-6">
+        <div class="empty-state">
+            <p>No expense transactions in this range.</p>
+        </div>
+    </div>
+{% endif %}
+
+{% if income_breakdown %}
+    <div class="card mt-6">
+        <h3 class="card-title">Income by Category</h3>
+        <div class="breakdown">
+            {% for c in income_breakdown %}
+                <div class="breakdown-row">
+                    <div class="breakdown-label">
+                        <span class="badge badge-category">{{ c.category_name }}</span>
+                    </div>
+                    <div class="breakdown-bar">
+                        <div class="breakdown-bar-fill breakdown-bar-success"
+                             style="width: {{ c.percent }}%"></div>
+                    </div>
+                    <div class="breakdown-value">
+                        ₦{{ "{:,.2f}".format(c.total) }}
+                        <span class="text-muted">({{ "%.0f"|format(c.percent) }}%)</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

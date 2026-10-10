@@ -26,9 +26,15 @@
                 <li>
                     <a href="{{ url_for('transactions') if session.get('user_id') else url_for('login') }}">Transactions</a>
                 </li>
-                <li><a href="#">Budgets</a></li>
-                <li><a href="#">Savings</a></li>
-                <li><a href="#">Reports</a></li>
+                <li>
+                    <a href="{{ url_for('budgets') if session.get('user_id') else url_for('login') }}">Budgets</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('savings') if session.get('user_id') else url_for('login') }}">Savings</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('reports') if session.get('user_id') else url_for('login') }}">Reports</a>
+                </li>
                 {% if session.get('user_id') %}
                     <li><span class="nav-user">{{ session.get('user_name') }}</span></li>
                     <li><a href="{{ url_for('logout') }}">Logout</a></li>
