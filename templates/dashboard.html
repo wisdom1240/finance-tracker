@@ -11,22 +11,54 @@
 <div class="card-row mt-6">
     <div class="metric metric-balance">
         <div class="metric-label">Total Balance</div>
-        <div class="metric-value">₦0.00</div>
+        <div class="metric-value {% if balance < 0 %}negative{% endif %}">
+            ₦{{ "{:,.2f}".format(balance) }}
+        </div>
     </div>
     <div class="metric metric-income">
         <div class="metric-label">Total Income</div>
-        <div class="metric-value positive">₦0.00</div>
+        <div class="metric-value positive">₦{{ "{:,.2f}".format(total_income) }}</div>
     </div>
     <div class="metric metric-expense">
         <div class="metric-label">Total Expenses</div>
-        <div class="metric-value negative">₦0.00</div>
+        <div class="metric-value negative">₦{{ "{:,.2f}".format(total_expenses) }}</div>
     </div>
 </div>
 
 <div class="card mt-6">
     <h3 class="card-title">Recent Transactions</h3>
-    <div class="empty-state">
-        No transactions yet. Once you add some, they'll show up here.
-    </div>
+
+    {% if recent_transactions %}
+        <div class="table-wrap" style="border: 0; box-shadow: none;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in recent_transactions %}
+                        <tr>
+                            <td>{{ t.transaction_date.strftime('%d %b %Y') }}</td>
+                            <td><span class="badge badge-category">{{ t.category_name }}</span></td>
+                            <td>{{ t.description or '—' }}</td>
+                            <td class="text-right">
+                                <span class="badge badge-{{ t.type|lower }}">
+                                    {% if t.type == 'INCOME' %}+{% else %}−{% endif %}₦{{ "{:,.2f}".format(t.amount) }}
+                                </span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            No transactions yet. Once you add some, they'll show up here.
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

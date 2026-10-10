@@ -42,10 +42,57 @@ def create_app():
     def index():
         return render_template("index.html")
 
+    # ----------------------------------------------------------------
+    # Dashboard
+    # ----------------------------------------------------------------
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        return render_template("dashboard.html")
+        user_id = session["user_id"]
+
+        db = get_db()
+        cur = db.cursor()
+
+        # 1. Total income for this user
+        cur.execute(
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions "
+            "WHERE user_id = %s AND type = 'INCOME'",
+            (user_id,),
+        )
+        total_income = cur.fetchone()[0]
+
+        # 2. Total expenses for this user
+        cur.execute(
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions "
+            "WHERE user_id = %s AND type = 'EXPENSE'",
+            (user_id,),
+        )
+        total_expenses = cur.fetchone()[0]
+
+        # 3. Balance
+        balance = total_income - total_expenses
+
+        # 4. Recent transactions (with category name)
+        cur.execute(
+            "SELECT t.id, t.type, t.amount, t.description, t.transaction_date, "
+            "       c.name AS category_name "
+            "FROM transactions t "
+            "JOIN categories c ON c.id = t.category_id "
+            "WHERE t.user_id = %s "
+            "ORDER BY t.transaction_date DESC, t.id DESC "
+            "LIMIT 5",
+            (user_id,),
+        )
+        recent_transactions = cur.fetchall()
+        cur.close()
+
+        return render_template(
+            "dashboard.html",
+            total_income=total_income,
+            total_expenses=total_expenses,
+            balance=balance,
+            recent_transactions=recent_transactions,
+        )
 
     # ----------------------------------------------------------------
     # Registration
@@ -150,7 +197,7 @@ def create_app():
                     session["user_name"] = row[1]
 
                     flash(f"Welcome back, {row[1]}!", "success")
-                    return redirect(url_for("index"))
+                    return redirect(url_for("dashboard"))
 
         return render_template("login.html", form_data=form_data)
 

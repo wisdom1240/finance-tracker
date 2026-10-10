@@ -758,3 +758,14 @@ img {
     margin-bottom: var(--space-2);
 }
 
+/* 18. DASHBOARD TRANSACTIONS TABLE */
+.card .table-wrap {
+    margin-top: var(--space-2);
+}
+
+.card .table th,
+.card .table td {
+    padding-left: 0;
+    padding-right: 0;
+}
+
