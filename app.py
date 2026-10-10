@@ -5,12 +5,14 @@ Entry point for the Finance Tracker web application.
 
 import re
 from functools import wraps
+from datetime import date
 
 import psycopg2.extras
 
 from flask import (
     Flask, render_template, request, redirect, url_for, flash, session, g
 )
+from flask_wtf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from config import Config
@@ -35,6 +37,9 @@ def create_app():
     app.config.from_object(Config)
     init_db(app)
 
+    # CSRF protection for every POST form. Requires SECRET_KEY in config.
+    csrf = CSRFProtect(app)
+
     @app.before_request
     def load_user():
         g.user_id = session.get("user_id")
@@ -54,7 +59,6 @@ def create_app():
         db = get_db()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # 1. Total income
         cur.execute(
             "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions "
             "WHERE user_id = %s AND type = 'INCOME'",
@@ -62,7 +66,6 @@ def create_app():
         )
         total_income = cur.fetchone()["total"]
 
-        # 2. Total expenses
         cur.execute(
             "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions "
             "WHERE user_id = %s AND type = 'EXPENSE'",
@@ -70,10 +73,8 @@ def create_app():
         )
         total_expenses = cur.fetchone()["total"]
 
-        # 3. Balance
         balance = total_income - total_expenses
 
-        # 4. Recent transactions
         cur.execute(
             "SELECT t.id, t.type, t.amount, t.description, t.transaction_date, "
             "       c.name AS category_name "
@@ -93,6 +94,107 @@ def create_app():
             total_expenses=total_expenses,
             balance=balance,
             recent_transactions=recent_transactions,
+        )
+
+    # ----------------------------------------------------------------
+    # Add Transaction
+    # ----------------------------------------------------------------
+    @app.route("/transactions/add", methods=["GET", "POST"])
+    @login_required
+    def add_transaction():
+        user_id = session["user_id"]
+
+        db = get_db()
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id, name, type FROM categories ORDER BY type, name")
+        categories = cur.fetchall()
+        cur.close()
+
+        form_data = None
+
+        if request.method == "POST":
+            t_type = request.form.get("type", "").strip().upper()
+            category_id = request.form.get("category_id", "").strip()
+            amount = request.form.get("amount", "").strip()
+            description = request.form.get("description", "").strip()
+            transaction_date = request.form.get("transaction_date", "").strip()
+
+            form_data = {
+                "type": t_type,
+                "category_id": int(category_id) if category_id.isdigit() else None,
+                "amount": amount,
+                "description": description,
+                "transaction_date": transaction_date,
+            }
+
+            errors = []
+
+            # Type
+            if t_type not in ("INCOME", "EXPENSE"):
+                errors.append("Please choose a valid type.")
+
+            # Category
+            category_row = None
+            if not category_id or not category_id.isdigit():
+                errors.append("Please choose a category.")
+            else:
+                cur2 = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur2.execute(
+                    "SELECT id, type FROM categories WHERE id = %s",
+                    (int(category_id),),
+                )
+                category_row = cur2.fetchone()
+                cur2.close()
+                if category_row is None:
+                    errors.append("That category does not exist.")
+                elif category_row["type"] != t_type:
+                    errors.append(
+                        "The category does not match the transaction type."
+                    )
+
+            # Amount
+            try:
+                amount_dec = float(amount)
+            except (TypeError, ValueError):
+                amount_dec = None
+            if amount_dec is None or amount_dec <= 0:
+                errors.append("Amount must be greater than zero.")
+
+            # Date
+            try:
+                date.fromisoformat(transaction_date)
+            except (TypeError, ValueError):
+                errors.append("Please enter a valid date.")
+
+            if errors:
+                for e in errors:
+                    flash(e, "error")
+            else:
+                cur3 = db.cursor()
+                cur3.execute(
+                    "INSERT INTO transactions "
+                    "(user_id, category_id, type, amount, description, transaction_date) "
+                    "VALUES (%s, %s, %s, %s, %s, %s)",
+                    (
+                        user_id,
+                        int(category_id),
+                        t_type,
+                        amount_dec,
+                        description or None,
+                        transaction_date,
+                    ),
+                )
+                db.commit()
+                cur3.close()
+
+                flash("Transaction added successfully.", "success")
+                return redirect(url_for("dashboard"))
+
+        return render_template(
+            "add_transaction.html",
+            categories=categories,
+            form_data=form_data,
+            today=date.today().isoformat(),
         )
 
     # ----------------------------------------------------------------

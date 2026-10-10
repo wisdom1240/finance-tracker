@@ -769,3 +769,33 @@ img {
     padding-right: 0;
 }
 
+/* 19. RADIO ROW */
+.radio-row {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.radio-option:hover {
+    border-color: var(--color-primary-light);
+    background: var(--color-bg);
+}
+
+.radio-option input[type="radio"] {
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
