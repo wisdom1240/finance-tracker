@@ -8,14 +8,68 @@
         <h1>Your Transactions</h1>
         <p class="text-muted">
             {% if transactions %}
-                {{ transactions|length }} transaction{% if transactions|length != 1 %}s{% endif %} recorded.
+                {{ transactions|length }} transaction{% if transactions|length != 1 %}s{% endif %}
+                {% if filters.type or filters.category_id or filters.from or filters.to or filters.q %}
+                    matching your filters.
+                {% else %}
+                    recorded.
+                {% endif %}
             {% else %}
-                No transactions yet.
+                No transactions found.
             {% endif %}
         </p>
     </div>
     <a href="{{ url_for('add_transaction') }}" class="btn btn-primary">+ Add Transaction</a>
 </section>
+
+<div class="card mt-6 filter-card">
+    <form method="GET" action="{{ url_for('transactions') }}" class="filter-form">
+        <div class="filter-row">
+            <div class="filter-field">
+                <label class="form-label" for="type">Type</label>
+                <select class="form-select" name="type" id="type">
+                    <option value="">All</option>
+                    <option value="INCOME" {% if filters.type == 'INCOME' %}selected{% endif %}>Income</option>
+                    <option value="EXPENSE" {% if filters.type == 'EXPENSE' %}selected{% endif %}>Expense</option>
+                </select>
+            </div>
+
+            <div class="filter-field">
+                <label class="form-label" for="category_id">Category</label>
+                <select class="form-select" name="category_id" id="category_id">
+                    <option value="">All</option>
+                    {% for c in categories %}
+                        <option value="{{ c.id }}"
+                            {% if filters.category_id and filters.category_id|int == c.id %}selected{% endif %}>
+                            {{ c.name }} ({{ c.type|capitalize }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-field">
+                <label class="form-label" for="from">From</label>
+                <input class="form-input" type="date" name="from" id="from" value="{{ filters.from }}">
+            </div>
+
+            <div class="filter-field">
+                <label class="form-label" for="to">To</label>
+                <input class="form-input" type="date" name="to" id="to" value="{{ filters.to }}">
+            </div>
+
+            <div class="filter-field filter-field-wide">
+                <label class="form-label" for="q">Search</label>
+                <input class="form-input" type="text" name="q" id="q"
+                       placeholder="Search description…" value="{{ filters.q }}">
+            </div>
+        </div>
+
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary">Apply filters</button>
+            <a href="{{ url_for('transactions') }}" class="btn btn-ghost">Clear</a>
+        </div>
+    </form>
+</div>
 
 {% if transactions %}
     <div class="table-wrap mt-6">
@@ -63,8 +117,8 @@
 {% else %}
     <div class="card mt-6">
         <div class="empty-state">
-            <p>You haven't recorded any transactions yet.</p>
-            <a href="{{ url_for('add_transaction') }}" class="btn btn-primary mt-4">Add your first transaction</a>
+            <p>No transactions match your filters.</p>
+            <a href="{{ url_for('transactions') }}" class="btn btn-ghost mt-4">Clear filters</a>
         </div>
     </div>
 {% endif %}

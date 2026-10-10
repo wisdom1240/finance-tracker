@@ -96,28 +96,77 @@ def create_app():
         )
 
     # ----------------------------------------------------------------
-    # Transactions List
+    # Transactions List (with search & filters)
     # ----------------------------------------------------------------
     @app.route("/transactions")
     @login_required
     def transactions():
         user_id = session["user_id"]
 
+        # Read filters from query string
+        f_type = request.args.get("type", "").strip().upper()
+        f_category = request.args.get("category_id", "").strip()
+        f_from = request.args.get("from", "").strip()
+        f_to = request.args.get("to", "").strip()
+        f_q = request.args.get("q", "").strip()
+
+        # Build dynamic WHERE clause safely
+        where = ["t.user_id = %s"]
+        params = [user_id]
+
+        if f_type in ("INCOME", "EXPENSE"):
+            where.append("t.type = %s")
+            params.append(f_type)
+
+        if f_category.isdigit():
+            where.append("t.category_id = %s")
+            params.append(int(f_category))
+
+        if f_from:
+            where.append("t.transaction_date >= %s")
+            params.append(f_from)
+
+        if f_to:
+            where.append("t.transaction_date <= %s")
+            params.append(f_to)
+
+        if f_q:
+            where.append("t.description ILIKE %s")
+            params.append(f"%{f_q}%")
+
+        where_sql = " AND ".join(where)
+
         db = get_db()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
         cur.execute(
-            "SELECT t.id, t.type, t.amount, t.description, t.transaction_date, "
-            "       c.name AS category_name "
-            "FROM transactions t "
-            "JOIN categories c ON c.id = t.category_id "
-            "WHERE t.user_id = %s "
-            "ORDER BY t.transaction_date DESC, t.id DESC",
-            (user_id,),
+            f"SELECT t.id, t.type, t.amount, t.description, t.transaction_date, "
+            f"       c.name AS category_name "
+            f"FROM transactions t "
+            f"JOIN categories c ON c.id = t.category_id "
+            f"WHERE {where_sql} "
+            f"ORDER BY t.transaction_date DESC, t.id DESC",
+            tuple(params),
         )
         transactions = cur.fetchall()
+
+        cur.execute("SELECT id, name, type FROM categories ORDER BY type, name")
+        categories = cur.fetchall()
+
         cur.close()
 
-        return render_template("transactions.html", transactions=transactions)
+        return render_template(
+            "transactions.html",
+            transactions=transactions,
+            categories=categories,
+            filters={
+                "type": f_type,
+                "category_id": f_category,
+                "from": f_from,
+                "to": f_to,
+                "q": f_q,
+            },
+        )
 
     # ----------------------------------------------------------------
     # Edit Transaction
