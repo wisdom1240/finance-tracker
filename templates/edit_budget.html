@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Budget — Finance Tracker{% endblock %}
+
+{% block content %}
+<section class="auth-card">
+    <h1>Edit Budget</h1>
+    <p class="text-muted">Update your monthly spending limit.</p>
+
+    <form method="POST"
+          action="{{ url_for('edit_budget', budget_id=budget.id) }}"
+          novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+            <label class="form-label" for="category_id">Category</label>
+            <select class="form-select" id="category_id" name="category_id" required>
+                <option value="">Select an expense category…</option>
+                {% for c in categories %}
+                    <option value="{{ c.id }}"
+                        {% if c.id == budget.category_id %}selected{% endif %}>
+                        {{ c.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="amount">Budget amount (₦)</label>
+            <input class="form-input" type="number" id="amount" name="amount"
+                   min="0.01" step="0.01" placeholder="0.00"
+                   value="{{ budget.amount }}" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="month">Month</label>
+            <select class="form-select" id="month" name="month" required>
+                {% for m_num, m_name in months %}
+                    <option value="{{ m_num }}"
+                        {% if m_num == budget.month %}selected{% endif %}>
+                        {{ m_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="year">Year</label>
+            <input class="form-input" type="number" id="year" name="year"
+                   min="2000" max="2100"
+                   value="{{ budget.year }}" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+    </form>
+
+    <p class="text-muted mt-6" style="text-align: center; font-size: 0.9375rem;">
+        <a href="{{ url_for('budgets') }}">← Back to budgets</a>
+    </p>
+</section>
+{% endblock %}s
