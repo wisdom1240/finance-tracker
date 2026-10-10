@@ -20,6 +20,13 @@ from db import init_app as init_db, get_db
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
+MONTH_NAMES = [
+    (1, "January"), (2, "February"), (3, "March"), (4, "April"),
+    (5, "May"), (6, "June"), (7, "July"), (8, "August"),
+    (9, "September"), (10, "October"), (11, "November"), (12, "December"),
+]
+MONTH_LOOKUP = dict(MONTH_NAMES)
+
 
 def login_required(view):
     """Decorator: redirect to /login if no user is in the session."""
@@ -96,21 +103,19 @@ def create_app():
         )
 
     # ----------------------------------------------------------------
-    # Transactions List (with search & filters)
+    # Transactions List
     # ----------------------------------------------------------------
     @app.route("/transactions")
     @login_required
     def transactions():
         user_id = session["user_id"]
 
-        # Read filters from query string
         f_type = request.args.get("type", "").strip().upper()
         f_category = request.args.get("category_id", "").strip()
         f_from = request.args.get("from", "").strip()
         f_to = request.args.get("to", "").strip()
         f_q = request.args.get("q", "").strip()
 
-        # Build dynamic WHERE clause safely
         where = ["t.user_id = %s"]
         params = [user_id]
 
@@ -390,6 +395,165 @@ def create_app():
             categories=categories,
             form_data=form_data,
             today=date.today().isoformat(),
+        )
+
+    # ----------------------------------------------------------------
+    # Budgets List
+    # ----------------------------------------------------------------
+    @app.route("/budgets")
+    @login_required
+    def budgets():
+        user_id = session["user_id"]
+
+        db = get_db()
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Budget with SPENT computed live from transactions.
+        # Note: budget.month and budget.year are matched against
+        # EXTRACT(MONTH FROM transaction_date) and EXTRACT(YEAR FROM ...).
+        cur.execute(
+            "SELECT b.id, b.amount, b.month, b.year, "
+            "       c.name AS category_name, "
+            "       COALESCE(("
+            "           SELECT SUM(t.amount) FROM transactions t "
+            "           WHERE t.user_id = b.user_id "
+            "             AND t.category_id = b.category_id "
+            "             AND t.type = 'EXPENSE' "
+            "             AND EXTRACT(MONTH FROM t.transaction_date) = b.month "
+            "             AND EXTRACT(YEAR  FROM t.transaction_date) = b.year"
+            "       ), 0) AS spent "
+            "FROM budgets b "
+            "JOIN categories c ON c.id = b.category_id "
+            "WHERE b.user_id = %s "
+            "ORDER BY b.year DESC, b.month DESC, c.name",
+            (user_id,),
+        )
+        rows = cur.fetchall()
+        cur.close()
+
+        # Convert spent/amount to Decimal math and add derived fields
+        budgets_list = []
+        for r in rows:
+            spent = r["spent"] or 0
+            remaining = r["amount"] - spent
+            budgets_list.append({
+                "id": r["id"],
+                "category_name": r["category_name"],
+                "amount": r["amount"],
+                "spent": spent,
+                "remaining": remaining,
+                "month": r["month"],
+                "year": r["year"],
+                "month_name": MONTH_LOOKUP.get(r["month"], str(r["month"])),
+            })
+
+        return render_template("budgets.html", budgets=budgets_list)
+
+    # ----------------------------------------------------------------
+    # Add Budget
+    # ----------------------------------------------------------------
+    @app.route("/budgets/add", methods=["GET", "POST"])
+    @login_required
+    def add_budget():
+        user_id = session["user_id"]
+
+        db = get_db()
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT id, name FROM categories "
+            "WHERE type = 'EXPENSE' ORDER BY name"
+        )
+        categories = cur.fetchall()
+        cur.close()
+
+        form_data = None
+        today = date.today()
+
+        if request.method == "POST":
+            category_id = request.form.get("category_id", "").strip()
+            amount = request.form.get("amount", "").strip()
+            month = request.form.get("month", "").strip()
+            year = request.form.get("year", "").strip()
+
+            form_data = {
+                "category_id": int(category_id) if category_id.isdigit() else None,
+                "amount": amount,
+                "month": int(month) if month.isdigit() else None,
+                "year": int(year) if year.isdigit() else None,
+            }
+
+            errors = []
+
+            # Category — must be a valid EXPENSE category
+            category_row = None
+            if not category_id or not category_id.isdigit():
+                errors.append("Please choose a category.")
+            else:
+                cur2 = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur2.execute(
+                    "SELECT id, type FROM categories WHERE id = %s",
+                    (int(category_id),),
+                )
+                category_row = cur2.fetchone()
+                cur2.close()
+                if category_row is None:
+                    errors.append("That category does not exist.")
+                elif category_row["type"] != "EXPENSE":
+                    errors.append("Budgets only apply to expense categories.")
+
+            # Amount
+            try:
+                amount_dec = float(amount)
+            except (TypeError, ValueError):
+                amount_dec = None
+            if amount_dec is None or amount_dec <= 0:
+                errors.append("Budget amount must be greater than zero.")
+
+            # Month
+            if not month.isdigit() or not (1 <= int(month) <= 12):
+                errors.append("Please choose a valid month.")
+
+            # Year
+            if not year.isdigit() or not (2000 <= int(year) <= 2100):
+                errors.append("Please enter a valid year.")
+
+            # Check for existing budget for same (user, category, month, year)
+            if not errors:
+                cur3 = db.cursor()
+                cur3.execute(
+                    "SELECT id FROM budgets "
+                    "WHERE user_id = %s AND category_id = %s AND month = %s AND year = %s",
+                    (user_id, int(category_id), int(month), int(year)),
+                )
+                if cur3.fetchone() is not None:
+                    errors.append(
+                        "You already have a budget for that category in that month."
+                    )
+                cur3.close()
+
+            if errors:
+                for e in errors:
+                    flash(e, "error")
+            else:
+                cur4 = db.cursor()
+                cur4.execute(
+                    "INSERT INTO budgets (user_id, category_id, amount, month, year) "
+                    "VALUES (%s, %s, %s, %s, %s)",
+                    (user_id, int(category_id), amount_dec, int(month), int(year)),
+                )
+                db.commit()
+                cur4.close()
+
+                flash("Budget created successfully.", "success")
+                return redirect(url_for("budgets"))
+
+        return render_template(
+            "add_budget.html",
+            categories=categories,
+            form_data=form_data,
+            months=MONTH_NAMES,
+            current_month=today.month,
+            current_year=today.year,
         )
 
     # ----------------------------------------------------------------
