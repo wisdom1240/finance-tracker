@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Finance Tracker{% endblock %}
+
+{% block content %}
+<section class="dashboard-header">
+    <h1>Welcome back, {{ session.get('user_name') }}!</h1>
+    <p class="text-muted">This is your financial overview.</p>
+</section>
+
+<div class="card-row mt-6">
+    <div class="metric metric-balance">
+        <div class="metric-label">Total Balance</div>
+        <div class="metric-value">₦0.00</div>
+    </div>
+    <div class="metric metric-income">
+        <div class="metric-label">Total Income</div>
+        <div class="metric-value positive">₦0.00</div>
+    </div>
+    <div class="metric metric-expense">
+        <div class="metric-label">Total Expenses</div>
+        <div class="metric-value negative">₦0.00</div>
+    </div>
+</div>
+
+<div class="card mt-6">
+    <h3 class="card-title">Recent Transactions</h3>
+    <div class="empty-state">
+        No transactions yet. Once you add some, they'll show up here.
+    </div>
+</div>
+{% endblock %}

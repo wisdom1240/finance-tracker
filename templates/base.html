@@ -20,7 +20,9 @@
             <button class="nav-toggle" aria-label="Toggle menu">☰</button>
 
             <ul class="nav-links">
-                <li><a href="{{ url_for('index') }}">Dashboard</a></li>
+                <li>
+                    <a href="{{ url_for('dashboard') if session.get('user_id') else url_for('login') }}">Dashboard</a>
+                </li>
                 <li><a href="#">Transactions</a></li>
                 <li><a href="#">Budgets</a></li>
                 <li><a href="#">Savings</a></li>

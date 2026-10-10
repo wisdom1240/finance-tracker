@@ -752,3 +752,9 @@ img {
     font-weight: 500;
 }
 
+/* 17. DASHBOARD HEADER */
+.dashboard-header h1 {
+    font-size: 1.75rem;
+    margin-bottom: var(--space-2);
+}
+
