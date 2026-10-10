@@ -986,3 +986,107 @@ img {
     background: #FEE2E2;
     color: #991B1B;
 }
+
+/* 26. SAVINGS GOALS */
+.savings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: var(--space-5);
+    margin-top: var(--space-6);
+}
+
+.savings-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+    transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.savings-card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+}
+
+.savings-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.savings-title {
+    font-size: 1.125rem;
+    margin-bottom: var(--space-2);
+    color: var(--color-text);
+}
+
+.savings-amount {
+    margin-bottom: var(--space-2);
+    font-size: 0.9375rem;
+}
+
+.savings-amount strong {
+    font-size: 1.125rem;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.savings-meta {
+    font-size: 0.8125rem;
+    margin-bottom: var(--space-3);
+}
+
+.savings-add-form {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.form-input-sm {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.875rem;
+    max-width: 180px;
+}
+
+.btn-sm {
+    padding: var(--space-2) var(--space-4);
+    font-size: 0.875rem;
+}
+
+.savings-actions {
+    font-size: 0.8125rem;
+}
+
+.savings-ring {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.savings-ring-text {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    fill: var(--color-text);
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 768px) {
+    .savings-card {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+    .savings-add-form {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .savings-ring {
+        margin: var(--space-3) auto 0;
+    }
+}

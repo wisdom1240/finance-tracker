@@ -29,7 +29,6 @@ MONTH_LOOKUP = dict(MONTH_NAMES)
 
 
 def login_required(view):
-    """Decorator: redirect to /login if no user is in the session."""
     @wraps(view)
     def wrapped(*args, **kwargs):
         if "user_id" not in session:
@@ -122,19 +121,15 @@ def create_app():
         if f_type in ("INCOME", "EXPENSE"):
             where.append("t.type = %s")
             params.append(f_type)
-
         if f_category.isdigit():
             where.append("t.category_id = %s")
             params.append(int(f_category))
-
         if f_from:
             where.append("t.transaction_date >= %s")
             params.append(f_from)
-
         if f_to:
             where.append("t.transaction_date <= %s")
             params.append(f_to)
-
         if f_q:
             where.append("t.description ILIKE %s")
             params.append(f"%{f_q}%")
@@ -157,7 +152,6 @@ def create_app():
 
         cur.execute("SELECT id, name, type FROM categories ORDER BY type, name")
         categories = cur.fetchall()
-
         cur.close()
 
         return render_template(
@@ -172,136 +166,6 @@ def create_app():
                 "q": f_q,
             },
         )
-
-    # ----------------------------------------------------------------
-    # Edit Transaction
-    # ----------------------------------------------------------------
-    @app.route("/transactions/<int:transaction_id>/edit", methods=["GET", "POST"])
-    @login_required
-    def edit_transaction(transaction_id):
-        user_id = session["user_id"]
-        db = get_db()
-
-        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute(
-            "SELECT id, type, category_id, amount, description, transaction_date "
-            "FROM transactions "
-            "WHERE id = %s AND user_id = %s",
-            (transaction_id, user_id),
-        )
-        transaction = cur.fetchone()
-        cur.close()
-
-        if transaction is None:
-            abort(404)
-
-        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("SELECT id, name, type FROM categories ORDER BY type, name")
-        categories = cur.fetchall()
-        cur.close()
-
-        if request.method == "POST":
-            t_type = request.form.get("type", "").strip().upper()
-            category_id = request.form.get("category_id", "").strip()
-            amount = request.form.get("amount", "").strip()
-            description = request.form.get("description", "").strip()
-            transaction_date = request.form.get("transaction_date", "").strip()
-
-            errors = []
-
-            if t_type not in ("INCOME", "EXPENSE"):
-                errors.append("Please choose a valid type.")
-
-            if not category_id or not category_id.isdigit():
-                errors.append("Please choose a category.")
-            else:
-                cur2 = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-                cur2.execute(
-                    "SELECT id, type FROM categories WHERE id = %s",
-                    (int(category_id),),
-                )
-                category_row = cur2.fetchone()
-                cur2.close()
-                if category_row is None:
-                    errors.append("That category does not exist.")
-                elif category_row["type"] != t_type:
-                    errors.append("The category does not match the transaction type.")
-
-            try:
-                amount_dec = float(amount)
-            except (TypeError, ValueError):
-                amount_dec = None
-            if amount_dec is None or amount_dec <= 0:
-                errors.append("Amount must be greater than zero.")
-
-            try:
-                date.fromisoformat(transaction_date)
-            except (TypeError, ValueError):
-                errors.append("Please enter a valid date.")
-
-            if errors:
-                for e in errors:
-                    flash(e, "error")
-                transaction = {
-                    "id": transaction_id,
-                    "type": t_type,
-                    "category_id": int(category_id) if category_id.isdigit() else None,
-                    "amount": amount,
-                    "description": description,
-                    "transaction_date": transaction_date,
-                }
-            else:
-                cur3 = db.cursor()
-                cur3.execute(
-                    "UPDATE transactions "
-                    "SET category_id = %s, type = %s, amount = %s, "
-                    "    description = %s, transaction_date = %s, updated_at = NOW() "
-                    "WHERE id = %s AND user_id = %s",
-                    (
-                        int(category_id),
-                        t_type,
-                        amount_dec,
-                        description or None,
-                        transaction_date,
-                        transaction_id,
-                        user_id,
-                    ),
-                )
-                db.commit()
-                cur3.close()
-
-                flash("Transaction updated successfully.", "success")
-                return redirect(url_for("transactions"))
-
-        return render_template(
-            "edit_transaction.html",
-            transaction=transaction,
-            categories=categories,
-        )
-
-    # ----------------------------------------------------------------
-    # Delete Transaction
-    # ----------------------------------------------------------------
-    @app.route("/transactions/<int:transaction_id>/delete", methods=["POST"])
-    @login_required
-    def delete_transaction(transaction_id):
-        user_id = session["user_id"]
-
-        db = get_db()
-        cur = db.cursor()
-        cur.execute(
-            "DELETE FROM transactions WHERE id = %s AND user_id = %s",
-            (transaction_id, user_id),
-        )
-        deleted = cur.rowcount
-        db.commit()
-        cur.close()
-
-        if deleted == 0:
-            abort(404)
-
-        flash("Transaction deleted successfully.", "success")
-        return redirect(url_for("transactions"))
 
     # ----------------------------------------------------------------
     # Add Transaction
@@ -386,7 +250,6 @@ def create_app():
                 )
                 db.commit()
                 cur3.close()
-
                 flash("Transaction added successfully.", "success")
                 return redirect(url_for("dashboard"))
 
@@ -398,19 +261,123 @@ def create_app():
         )
 
     # ----------------------------------------------------------------
+    # Edit Transaction
+    # ----------------------------------------------------------------
+    @app.route("/transactions/<int:transaction_id>/edit", methods=["GET", "POST"])
+    @login_required
+    def edit_transaction(transaction_id):
+        user_id = session["user_id"]
+        db = get_db()
+
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT id, type, category_id, amount, description, transaction_date "
+            "FROM transactions WHERE id = %s AND user_id = %s",
+            (transaction_id, user_id),
+        )
+        transaction = cur.fetchone()
+        cur.close()
+        if transaction is None:
+            abort(404)
+
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id, name, type FROM categories ORDER BY type, name")
+        categories = cur.fetchall()
+        cur.close()
+
+        if request.method == "POST":
+            t_type = request.form.get("type", "").strip().upper()
+            category_id = request.form.get("category_id", "").strip()
+            amount = request.form.get("amount", "").strip()
+            description = request.form.get("description", "").strip()
+            transaction_date = request.form.get("transaction_date", "").strip()
+
+            errors = []
+            if t_type not in ("INCOME", "EXPENSE"):
+                errors.append("Please choose a valid type.")
+            if not category_id or not category_id.isdigit():
+                errors.append("Please choose a category.")
+            else:
+                cur2 = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur2.execute("SELECT id, type FROM categories WHERE id = %s", (int(category_id),))
+                category_row = cur2.fetchone()
+                cur2.close()
+                if category_row is None:
+                    errors.append("That category does not exist.")
+                elif category_row["type"] != t_type:
+                    errors.append("The category does not match the transaction type.")
+
+            try:
+                amount_dec = float(amount)
+            except (TypeError, ValueError):
+                amount_dec = None
+            if amount_dec is None or amount_dec <= 0:
+                errors.append("Amount must be greater than zero.")
+
+            try:
+                date.fromisoformat(transaction_date)
+            except (TypeError, ValueError):
+                errors.append("Please enter a valid date.")
+
+            if errors:
+                for e in errors:
+                    flash(e, "error")
+                transaction = {
+                    "id": transaction_id,
+                    "type": t_type,
+                    "category_id": int(category_id) if category_id.isdigit() else None,
+                    "amount": amount,
+                    "description": description,
+                    "transaction_date": transaction_date,
+                }
+            else:
+                cur3 = db.cursor()
+                cur3.execute(
+                    "UPDATE transactions SET category_id = %s, type = %s, amount = %s, "
+                    "    description = %s, transaction_date = %s, updated_at = NOW() "
+                    "WHERE id = %s AND user_id = %s",
+                    (int(category_id), t_type, amount_dec, description or None,
+                     transaction_date, transaction_id, user_id),
+                )
+                db.commit()
+                cur3.close()
+                flash("Transaction updated successfully.", "success")
+                return redirect(url_for("transactions"))
+
+        return render_template("edit_transaction.html",
+                               transaction=transaction, categories=categories)
+
+    # ----------------------------------------------------------------
+    # Delete Transaction
+    # ----------------------------------------------------------------
+    @app.route("/transactions/<int:transaction_id>/delete", methods=["POST"])
+    @login_required
+    def delete_transaction(transaction_id):
+        user_id = session["user_id"]
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("DELETE FROM transactions WHERE id = %s AND user_id = %s",
+                    (transaction_id, user_id))
+        deleted = cur.rowcount
+        db.commit()
+        cur.close()
+        if deleted == 0:
+            abort(404)
+        flash("Transaction deleted successfully.", "success")
+        return redirect(url_for("transactions"))
+
+    # ----------------------------------------------------------------
     # Budgets List
     # ----------------------------------------------------------------
     @app.route("/budgets")
     @login_required
     def budgets():
         user_id = session["user_id"]
-
         db = get_db()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         cur.execute(
-            "SELECT b.id, b.amount, b.month, b.year, "
-            "       c.name AS category_name, "
+            "SELECT b.id, b.amount, b.month, b.year, c.name AS category_name, "
             "       COALESCE(("
             "           SELECT SUM(t.amount) FROM transactions t "
             "           WHERE t.user_id = b.user_id "
@@ -452,13 +419,9 @@ def create_app():
     @login_required
     def add_budget():
         user_id = session["user_id"]
-
         db = get_db()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute(
-            "SELECT id, name FROM categories "
-            "WHERE type = 'EXPENSE' ORDER BY name"
-        )
+        cur.execute("SELECT id, name FROM categories WHERE type = 'EXPENSE' ORDER BY name")
         categories = cur.fetchall()
         cur.close()
 
@@ -479,21 +442,16 @@ def create_app():
             }
 
             errors = []
-
-            category_row = None
             if not category_id or not category_id.isdigit():
                 errors.append("Please choose a category.")
             else:
                 cur2 = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-                cur2.execute(
-                    "SELECT id, type FROM categories WHERE id = %s",
-                    (int(category_id),),
-                )
-                category_row = cur2.fetchone()
+                cur2.execute("SELECT id, type FROM categories WHERE id = %s", (int(category_id),))
+                row = cur2.fetchone()
                 cur2.close()
-                if category_row is None:
+                if row is None:
                     errors.append("That category does not exist.")
-                elif category_row["type"] != "EXPENSE":
+                elif row["type"] != "EXPENSE":
                     errors.append("Budgets only apply to expense categories.")
 
             try:
@@ -505,21 +463,18 @@ def create_app():
 
             if not month.isdigit() or not (1 <= int(month) <= 12):
                 errors.append("Please choose a valid month.")
-
             if not year.isdigit() or not (2000 <= int(year) <= 2100):
                 errors.append("Please enter a valid year.")
 
             if not errors:
                 cur3 = db.cursor()
                 cur3.execute(
-                    "SELECT id FROM budgets "
-                    "WHERE user_id = %s AND category_id = %s AND month = %s AND year = %s",
+                    "SELECT id FROM budgets WHERE user_id = %s AND category_id = %s "
+                    "  AND month = %s AND year = %s",
                     (user_id, int(category_id), int(month), int(year)),
                 )
                 if cur3.fetchone() is not None:
-                    errors.append(
-                        "You already have a budget for that category in that month."
-                    )
+                    errors.append("You already have a budget for that category in that month.")
                 cur3.close()
 
             if errors:
@@ -534,7 +489,6 @@ def create_app():
                 )
                 db.commit()
                 cur4.close()
-
                 flash("Budget created successfully.", "success")
                 return redirect(url_for("budgets"))
 
@@ -558,22 +512,17 @@ def create_app():
 
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, category_id, amount, month, year "
-            "FROM budgets "
+            "SELECT id, category_id, amount, month, year FROM budgets "
             "WHERE id = %s AND user_id = %s",
             (budget_id, user_id),
         )
         budget = cur.fetchone()
         cur.close()
-
         if budget is None:
             abort(404)
 
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute(
-            "SELECT id, name FROM categories "
-            "WHERE type = 'EXPENSE' ORDER BY name"
-        )
+        cur.execute("SELECT id, name FROM categories WHERE type = 'EXPENSE' ORDER BY name")
         categories = cur.fetchall()
         cur.close()
 
@@ -584,21 +533,16 @@ def create_app():
             year = request.form.get("year", "").strip()
 
             errors = []
-
-            category_row = None
             if not category_id or not category_id.isdigit():
                 errors.append("Please choose a category.")
             else:
                 cur2 = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-                cur2.execute(
-                    "SELECT id, type FROM categories WHERE id = %s",
-                    (int(category_id),),
-                )
-                category_row = cur2.fetchone()
+                cur2.execute("SELECT id, type FROM categories WHERE id = %s", (int(category_id),))
+                row = cur2.fetchone()
                 cur2.close()
-                if category_row is None:
+                if row is None:
                     errors.append("That category does not exist.")
-                elif category_row["type"] != "EXPENSE":
+                elif row["type"] != "EXPENSE":
                     errors.append("Budgets only apply to expense categories.")
 
             try:
@@ -610,23 +554,18 @@ def create_app():
 
             if not month.isdigit() or not (1 <= int(month) <= 12):
                 errors.append("Please choose a valid month.")
-
             if not year.isdigit() or not (2000 <= int(year) <= 2100):
                 errors.append("Please enter a valid year.")
 
-            # Check for a DIFFERENT budget with the same (user, category, month, year)
             if not errors:
                 cur3 = db.cursor()
                 cur3.execute(
-                    "SELECT id FROM budgets "
-                    "WHERE user_id = %s AND category_id = %s AND month = %s AND year = %s "
-                    "  AND id <> %s",
+                    "SELECT id FROM budgets WHERE user_id = %s AND category_id = %s "
+                    "  AND month = %s AND year = %s AND id <> %s",
                     (user_id, int(category_id), int(month), int(year), budget_id),
                 )
                 if cur3.fetchone() is not None:
-                    errors.append(
-                        "You already have a budget for that category in that month."
-                    )
+                    errors.append("You already have a budget for that category in that month.")
                 cur3.close()
 
             if errors:
@@ -642,30 +581,17 @@ def create_app():
             else:
                 cur4 = db.cursor()
                 cur4.execute(
-                    "UPDATE budgets "
-                    "SET category_id = %s, amount = %s, month = %s, year = %s "
+                    "UPDATE budgets SET category_id = %s, amount = %s, month = %s, year = %s "
                     "WHERE id = %s AND user_id = %s",
-                    (
-                        int(category_id),
-                        amount_dec,
-                        int(month),
-                        int(year),
-                        budget_id,
-                        user_id,
-                    ),
+                    (int(category_id), amount_dec, int(month), int(year), budget_id, user_id),
                 )
                 db.commit()
                 cur4.close()
-
                 flash("Budget updated successfully.", "success")
                 return redirect(url_for("budgets"))
 
-        return render_template(
-            "edit_budget.html",
-            budget=budget,
-            categories=categories,
-            months=MONTH_NAMES,
-        )
+        return render_template("edit_budget.html",
+                               budget=budget, categories=categories, months=MONTH_NAMES)
 
     # ----------------------------------------------------------------
     # Delete Budget
@@ -674,22 +600,178 @@ def create_app():
     @login_required
     def delete_budget(budget_id):
         user_id = session["user_id"]
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("DELETE FROM budgets WHERE id = %s AND user_id = %s",
+                    (budget_id, user_id))
+        deleted = cur.rowcount
+        db.commit()
+        cur.close()
+        if deleted == 0:
+            abort(404)
+        flash("Budget deleted successfully.", "success")
+        return redirect(url_for("budgets"))
+
+    # ----------------------------------------------------------------
+    # Savings Goals — List
+    # ----------------------------------------------------------------
+    @app.route("/savings")
+    @login_required
+    def savings():
+        user_id = session["user_id"]
+
+        db = get_db()
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT id, name, target_amount, current_amount, target_date "
+            "FROM savings_goals "
+            "WHERE user_id = %s "
+            "ORDER BY target_date NULLS LAST, id DESC",
+            (user_id,),
+        )
+        rows = cur.fetchall()
+        cur.close()
+
+        goals = []
+        for r in rows:
+            remaining = r["target_amount"] - r["current_amount"]
+            if remaining < 0:
+                remaining = 0
+            goals.append({
+                "id": r["id"],
+                "name": r["name"],
+                "target_amount": r["target_amount"],
+                "current_amount": r["current_amount"],
+                "remaining": remaining,
+                "target_date": r["target_date"],
+            })
+
+        return render_template("savings.html", goals=goals)
+
+    # ----------------------------------------------------------------
+    # Savings Goals — Add
+    # ----------------------------------------------------------------
+    @app.route("/savings/add", methods=["GET", "POST"])
+    @login_required
+    def add_savings():
+        user_id = session["user_id"]
+        form_data = None
+
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            target_amount = request.form.get("target_amount", "").strip()
+            current_amount = request.form.get("current_amount", "").strip() or "0"
+            target_date = request.form.get("target_date", "").strip()
+
+            form_data = {
+                "name": name,
+                "target_amount": target_amount,
+                "current_amount": current_amount,
+                "target_date": target_date,
+            }
+
+            errors = []
+
+            if not name:
+                errors.append("Goal name is required.")
+            elif len(name) > 100:
+                errors.append("Goal name must be 100 characters or fewer.")
+
+            try:
+                target_dec = float(target_amount)
+            except (TypeError, ValueError):
+                target_dec = None
+            if target_dec is None or target_dec <= 0:
+                errors.append("Target amount must be greater than zero.")
+
+            try:
+                current_dec = float(current_amount)
+            except (TypeError, ValueError):
+                current_dec = None
+            if current_dec is None or current_dec < 0:
+                errors.append("Already-saved amount cannot be negative.")
+
+            if target_date:
+                try:
+                    date.fromisoformat(target_date)
+                except (TypeError, ValueError):
+                    errors.append("Please enter a valid target date.")
+            else:
+                target_date = None
+
+            if errors:
+                for e in errors:
+                    flash(e, "error")
+            else:
+                db = get_db()
+                cur = db.cursor()
+                cur.execute(
+                    "INSERT INTO savings_goals "
+                    "(user_id, name, target_amount, current_amount, target_date) "
+                    "VALUES (%s, %s, %s, %s, %s)",
+                    (user_id, name, target_dec, current_dec, target_date),
+                )
+                db.commit()
+                cur.close()
+                flash("Savings goal created successfully.", "success")
+                return redirect(url_for("savings"))
+
+        return render_template("add_savings.html", form_data=form_data)
+
+    # ----------------------------------------------------------------
+    # Savings Goals — Add Funds
+    # ----------------------------------------------------------------
+    @app.route("/savings/<int:goal_id>/add-funds", methods=["POST"])
+    @login_required
+    def add_savings_funds(goal_id):
+        user_id = session["user_id"]
+        amount = request.form.get("amount", "").strip()
+
+        try:
+            amount_dec = float(amount)
+        except (TypeError, ValueError):
+            amount_dec = None
+
+        if amount_dec is None or amount_dec <= 0:
+            flash("Amount must be greater than zero.", "error")
+            return redirect(url_for("savings"))
 
         db = get_db()
         cur = db.cursor()
         cur.execute(
-            "DELETE FROM budgets WHERE id = %s AND user_id = %s",
-            (budget_id, user_id),
+            "UPDATE savings_goals "
+            "SET current_amount = current_amount + %s, updated_at = NOW() "
+            "WHERE id = %s AND user_id = %s",
+            (amount_dec, goal_id, user_id),
         )
-        deleted = cur.rowcount
+        updated = cur.rowcount
         db.commit()
         cur.close()
 
-        if deleted == 0:
+        if updated == 0:
             abort(404)
 
-        flash("Budget deleted successfully.", "success")
-        return redirect(url_for("budgets"))
+        flash(f"Added ₦{amount_dec:,.2f} to your goal.", "success")
+        return redirect(url_for("savings"))
+
+    # ----------------------------------------------------------------
+    # Savings Goals — Delete
+    # ----------------------------------------------------------------
+    @app.route("/savings/<int:goal_id>/delete", methods=["POST"])
+    @login_required
+    def delete_savings(goal_id):
+        user_id = session["user_id"]
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("DELETE FROM savings_goals WHERE id = %s AND user_id = %s",
+                    (goal_id, user_id))
+        deleted = cur.rowcount
+        db.commit()
+        cur.close()
+        if deleted == 0:
+            abort(404)
+        flash("Savings goal deleted successfully.", "success")
+        return redirect(url_for("savings"))
 
     # ----------------------------------------------------------------
     # Registration
@@ -697,7 +779,6 @@ def create_app():
     @app.route("/register", methods=["GET", "POST"])
     def register():
         form_data = None
-
         if request.method == "POST":
             first_name = request.form.get("first_name", "").strip()
             last_name = request.form.get("last_name", "").strip()
@@ -705,32 +786,20 @@ def create_app():
             password = request.form.get("password", "")
             confirm = request.form.get("confirm_password", "")
 
-            form_data = {
-                "first_name": first_name,
-                "last_name": last_name,
-                "email": email,
-            }
-
+            form_data = {"first_name": first_name, "last_name": last_name, "email": email}
             errors = []
 
-            if not first_name:
-                errors.append("First name is required.")
-            if not last_name:
-                errors.append("Last name is required.")
-            if not email:
-                errors.append("Email is required.")
-            elif not EMAIL_RE.match(email):
-                errors.append("Please enter a valid email address.")
-            if not password:
-                errors.append("Password is required.")
-            elif len(password) < 8:
-                errors.append("Password must be at least 8 characters.")
+            if not first_name: errors.append("First name is required.")
+            if not last_name: errors.append("Last name is required.")
+            if not email: errors.append("Email is required.")
+            elif not EMAIL_RE.match(email): errors.append("Please enter a valid email address.")
+            if not password: errors.append("Password is required.")
+            elif len(password) < 8: errors.append("Password must be at least 8 characters.")
             elif not re.search(r"[A-Za-z]", password):
                 errors.append("Password must contain at least one letter.")
             elif not re.search(r"[0-9]", password):
                 errors.append("Password must contain at least one number.")
-            if password != confirm:
-                errors.append("Passwords do not match.")
+            if password != confirm: errors.append("Passwords do not match.")
 
             if not errors:
                 db = get_db()
@@ -754,7 +823,6 @@ def create_app():
                 )
                 db.commit()
                 cur.close()
-
                 flash("Account created successfully. Please log in.", "success")
                 return redirect(url_for("login"))
 
@@ -766,11 +834,9 @@ def create_app():
     @app.route("/login", methods=["GET", "POST"])
     def login():
         form_data = None
-
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "")
-
             form_data = {"email": email}
 
             if not email or not password:
@@ -791,7 +857,6 @@ def create_app():
                     session.clear()
                     session["user_id"] = row["id"]
                     session["user_name"] = row["first_name"]
-
                     flash(f"Welcome back, {row['first_name']}!", "success")
                     return redirect(url_for("dashboard"))
 

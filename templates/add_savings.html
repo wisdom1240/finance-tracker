@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}New Savings Goal — Finance Tracker{% endblock %}
+
+{% block content %}
+<section class="auth-card">
+    <h1>New Savings Goal</h1>
+    <p class="text-muted">Name your goal and set a target amount.</p>
+
+    <form method="POST" action="{{ url_for('add_savings') }}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+            <label class="form-label" for="name">Goal name</label>
+            <input class="form-input" type="text" id="name" name="name"
+                   maxlength="100" placeholder="e.g. New laptop"
+                   value="{{ form_data.name if form_data else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="target_amount">Target amount (₦)</label>
+            <input class="form-input" type="number" id="target_amount" name="target_amount"
+                   min="0.01" step="0.01" placeholder="0.00"
+                   value="{{ form_data.target_amount if form_data else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="current_amount">Already saved (₦)</label>
+            <input class="form-input" type="number" id="current_amount" name="current_amount"
+                   min="0" step="0.01" placeholder="0.00"
+                   value="{{ form_data.current_amount if form_data else '0' }}">
+            <p class="form-help">Optional. Leave as 0 if you're starting fresh.</p>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="target_date">Target date (optional)</label>
+            <input class="form-input" type="date" id="target_date" name="target_date"
+                   value="{{ form_data.target_date if form_data else '' }}">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Create goal</button>
+    </form>
+
+    <p class="text-muted mt-6" style="text-align: center; font-size: 0.9375rem;">
+        <a href="{{ url_for('savings') }}">← Back to savings</a>
+    </p>
+</section>
+{% endblock %}

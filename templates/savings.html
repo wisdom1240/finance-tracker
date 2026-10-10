@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Savings Goals — Finance Tracker{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <h1>Your Savings Goals</h1>
+        <p class="text-muted">
+            {% if goals %}
+                {{ goals|length }} goal{% if goals|length != 1 %}s{% endif %} in progress.
+            {% else %}
+                No savings goals yet.
+            {% endif %}
+        </p>
+    </div>
+    <a href="{{ url_for('add_savings') }}" class="btn btn-primary">+ New Goal</a>
+</section>
+
+{% if goals %}
+    <div class="savings-grid">
+        {% for g in goals %}
+            {% set pct = (g.current_amount / g.target_amount * 100) if g.target_amount > 0 else 0 %}
+            {% set pct_f = pct|float %}
+            {% set pct_clamped = [pct_f, 100] | min %}
+            {% set dash = 326.726 %}
+            {% set dash_offset = dash * (1 - pct_clamped / 100) %}
+
+            <div class="savings-card">
+                <div class="savings-card-body">
+                    <h3 class="savings-title">{{ g.name }}</h3>
+
+                    <div class="savings-amount">
+                        <strong>₦{{ "{:,.2f}".format(g.current_amount) }}</strong>
+                        <span class="text-muted">of ₦{{ "{:,.2f}".format(g.target_amount) }}</span>
+                    </div>
+
+                    <div class="savings-meta">
+                        <span class="text-muted">
+                            Remaining: ₦{{ "{:,.2f}".format(g.remaining) }}
+                        </span>
+                        {% if g.target_date %}
+                            <span class="text-muted">
+                                · Due {{ g.target_date.strftime('%d %b %Y') }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <form method="POST"
+                          action="{{ url_for('add_savings_funds', goal_id=g.id) }}"
+                          class="savings-add-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input class="form-input form-input-sm" type="number"
+                               name="amount" min="0.01" step="0.01"
+                               placeholder="Amount to add" required>
+                        <button type="submit" class="btn btn-success btn-sm">+ Add</button>
+                    </form>
+
+                    <div class="savings-actions">
+                        <form method="POST"
+                              action="{{ url_for('delete_savings', goal_id=g.id) }}"
+                              class="inline-form delete-form"
+                              data-confirm="Delete this savings goal? This cannot be undone.">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="link-action link-danger link-button">Delete</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="savings-ring">
+                    <svg viewBox="0 0 120 120" width="120" height="120">
+                        <circle cx="60" cy="60" r="52"
+                                fill="none"
+                                stroke="var(--color-border-subtle)"
+                                stroke-width="10" />
+                        <circle cx="60" cy="60" r="52"
+                                fill="none"
+                                stroke="var(--color-primary)"
+                                stroke-width="10"
+                                stroke-linecap="round"
+                                stroke-dasharray="{{ dash }}"
+                                stroke-dashoffset="{{ dash_offset }}"
+                                transform="rotate(-90 60 60)" />
+                        <text x="60" y="60" text-anchor="middle"
+                              dominant-baseline="middle"
+                              class="savings-ring-text">
+                            {{ "%.0f"|format(pct_f) }}%
+                        </text>
+                    </svg>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="card mt-6">
+        <div class="empty-state">
+            <p>You haven't set up any savings goals yet.</p>
+            <a href="{{ url_for('add_savings') }}" class="btn btn-primary mt-4">Create your first goal</a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
