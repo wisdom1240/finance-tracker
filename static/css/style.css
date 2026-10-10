@@ -799,3 +799,53 @@ img {
     cursor: pointer;
 }
 
+/* 20. PAGE HEADER (list pages) */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.page-header h1 {
+    font-size: 1.75rem;
+    margin-bottom: var(--space-1);
+}
+
+.page-header p {
+    margin: 0;
+}
+
+/* 20b. ACTION LINKS (Edit / Delete in tables) */
+.link-action {
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+}
+
+.link-action:hover {
+    color: var(--color-primary-dark);
+}
+
+.link-action.link-danger {
+    color: var(--color-danger);
+}
+
+.link-action.link-danger:hover {
+    color: var(--color-danger-dark);
+}
+
+.link-divider {
+    color: var(--color-text-faint);
+    margin: 0 var(--space-1);
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+

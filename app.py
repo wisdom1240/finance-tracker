@@ -97,6 +97,30 @@ def create_app():
         )
 
     # ----------------------------------------------------------------
+    # Transactions List
+    # ----------------------------------------------------------------
+    @app.route("/transactions")
+    @login_required
+    def transactions():
+        user_id = session["user_id"]
+
+        db = get_db()
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT t.id, t.type, t.amount, t.description, t.transaction_date, "
+            "       c.name AS category_name "
+            "FROM transactions t "
+            "JOIN categories c ON c.id = t.category_id "
+            "WHERE t.user_id = %s "
+            "ORDER BY t.transaction_date DESC, t.id DESC",
+            (user_id,),
+        )
+        transactions = cur.fetchall()
+        cur.close()
+
+        return render_template("transactions.html", transactions=transactions)
+
+    # ----------------------------------------------------------------
     # Add Transaction
     # ----------------------------------------------------------------
     @app.route("/transactions/add", methods=["GET", "POST"])
@@ -129,11 +153,9 @@ def create_app():
 
             errors = []
 
-            # Type
             if t_type not in ("INCOME", "EXPENSE"):
                 errors.append("Please choose a valid type.")
 
-            # Category
             category_row = None
             if not category_id or not category_id.isdigit():
                 errors.append("Please choose a category.")
@@ -152,7 +174,6 @@ def create_app():
                         "The category does not match the transaction type."
                     )
 
-            # Amount
             try:
                 amount_dec = float(amount)
             except (TypeError, ValueError):
@@ -160,7 +181,6 @@ def create_app():
             if amount_dec is None or amount_dec <= 0:
                 errors.append("Amount must be greater than zero.")
 
-            # Date
             try:
                 date.fromisoformat(transaction_date)
             except (TypeError, ValueError):
