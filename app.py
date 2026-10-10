@@ -10,7 +10,7 @@ from datetime import date
 import psycopg2.extras
 
 from flask import (
-    Flask, render_template, request, redirect, url_for, flash, session, g
+    Flask, render_template, request, redirect, url_for, flash, session, g, abort
 )
 from flask_wtf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -37,7 +37,6 @@ def create_app():
     app.config.from_object(Config)
     init_db(app)
 
-    # CSRF protection for every POST form. Requires SECRET_KEY in config.
     csrf = CSRFProtect(app)
 
     @app.before_request
@@ -121,6 +120,114 @@ def create_app():
         return render_template("transactions.html", transactions=transactions)
 
     # ----------------------------------------------------------------
+    # Edit Transaction
+    # ----------------------------------------------------------------
+    @app.route("/transactions/<int:transaction_id>/edit", methods=["GET", "POST"])
+    @login_required
+    def edit_transaction(transaction_id):
+        user_id = session["user_id"]
+        db = get_db()
+
+        # Load the transaction — MUST belong to this user.
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT id, type, category_id, amount, description, transaction_date "
+            "FROM transactions "
+            "WHERE id = %s AND user_id = %s",
+            (transaction_id, user_id),
+        )
+        transaction = cur.fetchone()
+        cur.close()
+
+        if transaction is None:
+            abort(404)
+
+        # Categories for the dropdown
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id, name, type FROM categories ORDER BY type, name")
+        categories = cur.fetchall()
+        cur.close()
+
+        if request.method == "POST":
+            t_type = request.form.get("type", "").strip().upper()
+            category_id = request.form.get("category_id", "").strip()
+            amount = request.form.get("amount", "").strip()
+            description = request.form.get("description", "").strip()
+            transaction_date = request.form.get("transaction_date", "").strip()
+
+            errors = []
+
+            if t_type not in ("INCOME", "EXPENSE"):
+                errors.append("Please choose a valid type.")
+
+            if not category_id or not category_id.isdigit():
+                errors.append("Please choose a category.")
+            else:
+                cur2 = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur2.execute(
+                    "SELECT id, type FROM categories WHERE id = %s",
+                    (int(category_id),),
+                )
+                category_row = cur2.fetchone()
+                cur2.close()
+                if category_row is None:
+                    errors.append("That category does not exist.")
+                elif category_row["type"] != t_type:
+                    errors.append("The category does not match the transaction type.")
+
+            try:
+                amount_dec = float(amount)
+            except (TypeError, ValueError):
+                amount_dec = None
+            if amount_dec is None or amount_dec <= 0:
+                errors.append("Amount must be greater than zero.")
+
+            try:
+                date.fromisoformat(transaction_date)
+            except (TypeError, ValueError):
+                errors.append("Please enter a valid date.")
+
+            if errors:
+                for e in errors:
+                    flash(e, "error")
+                transaction = {
+                    "id": transaction_id,
+                    "type": t_type,
+                    "category_id": int(category_id) if category_id.isdigit() else None,
+                    "amount": amount,
+                    "description": description,
+                    "transaction_date": transaction_date,
+                }
+            else:
+                cur3 = db.cursor()
+                cur3.execute(
+                    "UPDATE transactions "
+                    "SET category_id = %s, type = %s, amount = %s, "
+                    "    description = %s, transaction_date = %s, updated_at = NOW() "
+                    "WHERE id = %s AND user_id = %s",
+                    (
+                        int(category_id),
+                        t_type,
+                        amount_dec,
+                        description or None,
+                        transaction_date,
+                        transaction_id,
+                        user_id,
+                    ),
+                )
+                db.commit()
+                cur3.close()
+
+                flash("Transaction updated successfully.", "success")
+                return redirect(url_for("transactions"))
+
+        return render_template(
+            "edit_transaction.html",
+            transaction=transaction,
+            categories=categories,
+        )
+
+    # ----------------------------------------------------------------
     # Add Transaction
     # ----------------------------------------------------------------
     @app.route("/transactions/add", methods=["GET", "POST"])
@@ -156,7 +263,6 @@ def create_app():
             if t_type not in ("INCOME", "EXPENSE"):
                 errors.append("Please choose a valid type.")
 
-            category_row = None
             if not category_id or not category_id.isdigit():
                 errors.append("Please choose a category.")
             else:
@@ -170,9 +276,7 @@ def create_app():
                 if category_row is None:
                     errors.append("That category does not exist.")
                 elif category_row["type"] != t_type:
-                    errors.append(
-                        "The category does not match the transaction type."
-                    )
+                    errors.append("The category does not match the transaction type.")
 
             try:
                 amount_dec = float(amount)

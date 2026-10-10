@@ -45,7 +45,7 @@
                             </span>
                         </td>
                         <td class="text-right">
-                            <a href="#" class="link-action">Edit</a>
+                            <a href="{{ url_for('edit_transaction', transaction_id=t.id) }}" class="link-action">Edit</a>
                             <span class="link-divider">·</span>
                             <a href="#" class="link-action link-danger">Delete</a>
                         </td>
