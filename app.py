@@ -6,6 +6,8 @@ Entry point for the Finance Tracker web application.
 import re
 from functools import wraps
 
+import psycopg2.extras
+
 from flask import (
     Flask, render_template, request, redirect, url_for, flash, session, g
 )
@@ -35,7 +37,6 @@ def create_app():
 
     @app.before_request
     def load_user():
-        """Attach the logged-in user's id to g for use in views."""
         g.user_id = session.get("user_id")
 
     @app.route("/")
@@ -51,28 +52,28 @@ def create_app():
         user_id = session["user_id"]
 
         db = get_db()
-        cur = db.cursor()
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # 1. Total income for this user
+        # 1. Total income
         cur.execute(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions "
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions "
             "WHERE user_id = %s AND type = 'INCOME'",
             (user_id,),
         )
-        total_income = cur.fetchone()[0]
+        total_income = cur.fetchone()["total"]
 
-        # 2. Total expenses for this user
+        # 2. Total expenses
         cur.execute(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions "
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions "
             "WHERE user_id = %s AND type = 'EXPENSE'",
             (user_id,),
         )
-        total_expenses = cur.fetchone()[0]
+        total_expenses = cur.fetchone()["total"]
 
         # 3. Balance
         balance = total_income - total_expenses
 
-        # 4. Recent transactions (with category name)
+        # 4. Recent transactions
         cur.execute(
             "SELECT t.id, t.type, t.amount, t.description, t.transaction_date, "
             "       c.name AS category_name "
@@ -180,7 +181,7 @@ def create_app():
                 flash("Email and password are required.", "error")
             else:
                 db = get_db()
-                cur = db.cursor()
+                cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 cur.execute(
                     "SELECT id, first_name, password_hash FROM users WHERE email = %s",
                     (email,),
@@ -188,15 +189,14 @@ def create_app():
                 row = cur.fetchone()
                 cur.close()
 
-                # Generic error message: never reveal which field was wrong.
-                if row is None or not check_password_hash(row[2], password):
+                if row is None or not check_password_hash(row["password_hash"], password):
                     flash("Invalid email or password.", "error")
                 else:
                     session.clear()
-                    session["user_id"] = row[0]
-                    session["user_name"] = row[1]
+                    session["user_id"] = row["id"]
+                    session["user_name"] = row["first_name"]
 
-                    flash(f"Welcome back, {row[1]}!", "success")
+                    flash(f"Welcome back, {row['first_name']}!", "success")
                     return redirect(url_for("dashboard"))
 
         return render_template("login.html", form_data=form_data)
