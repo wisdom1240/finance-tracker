@@ -40,12 +40,7 @@ def login_required(view):
 
 
 def _date_range(preset, custom_from, custom_to):
-    """
-    Given a preset ('this_month', 'last_month', 'this_year', 'all_time', 'custom')
-    and optional custom dates, return (start_date, end_date) as date objects.
-    """
     today = date.today()
-
     if preset == "last_month":
         first_this = today.replace(day=1)
         last_prev = first_this - timedelta(days=1)
@@ -66,19 +61,22 @@ def _date_range(preset, custom_from, custom_to):
             end = date.fromisoformat(custom_to)
         except (TypeError, ValueError):
             end = today
-    else:  # this_month (default)
+    else:
         start = today.replace(day=1)
         last_day = monthrange(today.year, today.month)[1]
         end = today.replace(day=last_day)
-
     return start, end
+
+
+def _float_list(decimals):
+    """Convert a list of Decimal to a list of floats (for Chart.js)."""
+    return [float(d) for d in decimals]
 
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     init_db(app)
-
     csrf = CSRFProtect(app)
 
     @app.before_request
@@ -90,7 +88,7 @@ def create_app():
         return render_template("index.html")
 
     # ----------------------------------------------------------------
-    # Dashboard
+    # Dashboard (with chart data)
     # ----------------------------------------------------------------
     @app.route("/dashboard")
     @login_required
@@ -113,7 +111,6 @@ def create_app():
             (user_id,),
         )
         total_expenses = cur.fetchone()["total"]
-
         balance = total_income - total_expenses
 
         cur.execute(
@@ -127,6 +124,60 @@ def create_app():
             (user_id,),
         )
         recent_transactions = cur.fetchall()
+
+        # ---- Chart data ----
+
+        # Pie: expenses this month by category
+        today = date.today()
+        month_start = today.replace(day=1)
+        last_day = monthrange(today.year, today.month)[1]
+        month_end = today.replace(day=last_day)
+
+        cur.execute(
+            "SELECT c.name AS category_name, SUM(t.amount) AS total "
+            "FROM transactions t "
+            "JOIN categories c ON c.id = t.category_id "
+            "WHERE t.user_id = %s AND t.type = 'EXPENSE' "
+            "  AND t.transaction_date >= %s AND t.transaction_date <= %s "
+            "GROUP BY c.name "
+            "ORDER BY total DESC",
+            (user_id, month_start, month_end),
+        )
+        cat_rows = cur.fetchall()
+        category_labels = [r["category_name"] for r in cat_rows]
+        category_values = _float_list([r["total"] for r in cat_rows])
+
+        # Bar: income vs expenses for last 6 months
+        monthly_labels = []
+        monthly_income = []
+        monthly_expense = []
+
+        for i in range(5, -1, -1):
+            d = today.replace(day=1)
+            month_index = d.month - 1 - i
+            year_offset = month_index // 12
+            month_of = month_index % 12 + 1
+            y = d.year + year_offset
+            m = month_of
+
+            first = date(y, m, 1)
+            last = date(y, m, monthrange(y, m)[1])
+
+            cur.execute(
+                "SELECT "
+                "  COALESCE(SUM(CASE WHEN type='INCOME'  THEN amount END), 0) AS income, "
+                "  COALESCE(SUM(CASE WHEN type='EXPENSE' THEN amount END), 0) AS expenses "
+                "FROM transactions "
+                "WHERE user_id = %s AND transaction_date >= %s AND transaction_date <= %s",
+                (user_id, first, last),
+            )
+            r = cur.fetchone()
+
+            label = f"{MONTH_LOOKUP.get(m, str(m))[:3]} {y}"
+            monthly_labels.append(label)
+            monthly_income.append(float(r["income"]))
+            monthly_expense.append(float(r["expenses"]))
+
         cur.close()
 
         return render_template(
@@ -135,10 +186,15 @@ def create_app():
             total_expenses=total_expenses,
             balance=balance,
             recent_transactions=recent_transactions,
+            category_labels=category_labels,
+            category_values=category_values,
+            monthly_labels=monthly_labels,
+            monthly_income=monthly_income,
+            monthly_expense=monthly_expense,
         )
 
     # ----------------------------------------------------------------
-    # Reports
+    # Reports (with chart data)
     # ----------------------------------------------------------------
     @app.route("/reports")
     @login_required
@@ -151,13 +207,12 @@ def create_app():
 
         custom_from = request.args.get("from", "").strip()
         custom_to = request.args.get("to", "").strip()
-
         start, end = _date_range(preset, custom_from, custom_to)
 
         db = get_db()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # Totals for the range
+        # Totals
         cur.execute(
             "SELECT "
             "  COALESCE(SUM(CASE WHEN type='INCOME'  THEN amount END), 0) AS income, "
@@ -173,7 +228,7 @@ def create_app():
         transaction_count = row["tx_count"]
         net = total_income - total_expenses
 
-        # Expense breakdown by category
+        # Category breakdown (expense)
         cur.execute(
             "SELECT c.name AS category_name, SUM(t.amount) AS total "
             "FROM transactions t "
@@ -186,7 +241,7 @@ def create_app():
         )
         expense_rows = cur.fetchall()
 
-        # Income breakdown by category
+        # Income breakdown
         cur.execute(
             "SELECT c.name AS category_name, SUM(t.amount) AS total "
             "FROM transactions t "
@@ -199,9 +254,20 @@ def create_app():
         )
         income_rows = cur.fetchall()
 
+        # Trend: daily expenses in range
+        cur.execute(
+            "SELECT transaction_date, SUM(amount) AS total "
+            "FROM transactions "
+            "WHERE user_id = %s AND type = 'EXPENSE' "
+            "  AND transaction_date >= %s AND transaction_date <= %s "
+            "GROUP BY transaction_date "
+            "ORDER BY transaction_date",
+            (user_id, start, end),
+        )
+        trend_rows = cur.fetchall()
+
         cur.close()
 
-        # Compute percentages (expense)
         category_breakdown = []
         if expense_rows and total_expenses > 0:
             for r in expense_rows:
@@ -212,7 +278,6 @@ def create_app():
                     "percent": pct,
                 })
 
-        # Compute percentages (income)
         income_breakdown = []
         if income_rows and total_income > 0:
             for r in income_rows:
@@ -222,6 +287,12 @@ def create_app():
                     "total": r["total"],
                     "percent": pct,
                 })
+
+        trend_labels = [r["transaction_date"].strftime("%d %b") for r in trend_rows]
+        trend_values = _float_list([r["total"] for r in trend_rows])
+
+        category_labels = [r["category_name"] for r in expense_rows]
+        category_values = _float_list([r["total"] for r in expense_rows])
 
         return render_template(
             "reports.html",
@@ -238,16 +309,19 @@ def create_app():
                 "from": custom_from,
                 "to": custom_to,
             },
+            category_labels=category_labels,
+            category_values=category_values,
+            trend_labels=trend_labels,
+            trend_values=trend_values,
         )
 
     # ----------------------------------------------------------------
-    # Transactions List
+    # Transactions
     # ----------------------------------------------------------------
     @app.route("/transactions")
     @login_required
     def transactions():
         user_id = session["user_id"]
-
         f_type = request.args.get("type", "").strip().upper()
         f_category = request.args.get("category_id", "").strip()
         f_from = request.args.get("from", "").strip()
@@ -277,7 +351,6 @@ def create_app():
 
         db = get_db()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
         cur.execute(
             f"SELECT t.id, t.type, t.amount, t.description, t.transaction_date, "
             f"       c.name AS category_name "
@@ -288,7 +361,6 @@ def create_app():
             tuple(params),
         )
         transactions = cur.fetchall()
-
         cur.execute("SELECT id, name, type FROM categories ORDER BY type, name")
         categories = cur.fetchall()
         cur.close()
@@ -297,17 +369,12 @@ def create_app():
             "transactions.html",
             transactions=transactions,
             categories=categories,
-            filters={
-                "type": f_type,
-                "category_id": f_category,
-                "from": f_from,
-                "to": f_to,
-                "q": f_q,
-            },
+            filters={"type": f_type, "category_id": f_category,
+                     "from": f_from, "to": f_to, "q": f_q},
         )
 
     # ----------------------------------------------------------------
-    # Add / Edit / Delete Transaction (unchanged from Stage 25)
+    # Add / Edit / Delete Transaction
     # ----------------------------------------------------------------
     @app.route("/transactions/add", methods=["GET", "POST"])
     @login_required
@@ -442,11 +509,9 @@ def create_app():
                 for e in errors:
                     flash(e, "error")
                 transaction = {
-                    "id": transaction_id,
-                    "type": t_type,
+                    "id": transaction_id, "type": t_type,
                     "category_id": int(category_id) if category_id.isdigit() else None,
-                    "amount": amount,
-                    "description": description,
+                    "amount": amount, "description": description,
                     "transaction_date": transaction_date,
                 }
             else:
@@ -483,7 +548,7 @@ def create_app():
         return redirect(url_for("transactions"))
 
     # ----------------------------------------------------------------
-    # Budgets (unchanged from Stage 25)
+    # Budgets
     # ----------------------------------------------------------------
     @app.route("/budgets")
     @login_required
@@ -491,7 +556,6 @@ def create_app():
         user_id = session["user_id"]
         db = get_db()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
         cur.execute(
             "SELECT b.id, b.amount, b.month, b.year, c.name AS category_name, "
             "       COALESCE(("
@@ -525,7 +589,6 @@ def create_app():
                 "year": r["year"],
                 "month_name": MONTH_LOOKUP.get(r["month"], str(r["month"])),
             })
-
         return render_template("budgets.html", budgets=budgets_list)
 
     @app.route("/budgets/add", methods=["GET", "POST"])
@@ -716,7 +779,7 @@ def create_app():
         return redirect(url_for("budgets"))
 
     # ----------------------------------------------------------------
-    # Savings (unchanged from Stage 26)
+    # Savings
     # ----------------------------------------------------------------
     @app.route("/savings")
     @login_required
@@ -746,7 +809,6 @@ def create_app():
                 "remaining": remaining,
                 "target_date": r["target_date"],
             })
-
         return render_template("savings.html", goals=goals)
 
     @app.route("/savings/add", methods=["GET", "POST"])
@@ -817,12 +879,10 @@ def create_app():
     def add_savings_funds(goal_id):
         user_id = session["user_id"]
         amount = request.form.get("amount", "").strip()
-
         try:
             amount_dec = float(amount)
         except (TypeError, ValueError):
             amount_dec = None
-
         if amount_dec is None or amount_dec <= 0:
             flash("Amount must be greater than zero.", "error")
             return redirect(url_for("savings"))
@@ -860,7 +920,7 @@ def create_app():
         return redirect(url_for("savings"))
 
     # ----------------------------------------------------------------
-    # Auth (unchanged)
+    # Auth
     # ----------------------------------------------------------------
     @app.route("/register", methods=["GET", "POST"])
     def register():

@@ -1,5 +1,5 @@
 // main.js — Finance Tracker
-// Minimal JS for mobile nav toggle and dynamic form helpers.
+// Mobile nav toggle, dynamic form helpers, and Chart.js rendering.
 
 document.addEventListener("DOMContentLoaded", function () {
     // ---- Mobile nav toggle ----
@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // ---- Dynamic category loading on the transaction form ----
+    // ---- Dynamic category loading on transaction forms ----
     var typeInputs = document.querySelectorAll('input[name="type"]');
     var categorySelect = document.getElementById("category_id");
 
@@ -41,14 +41,219 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         filterCategories();
     }
-});
 
-// ---- Confirm delete forms ----
-document.querySelectorAll("form.delete-form").forEach(function (form) {
-    form.addEventListener("submit", function (e) {
-        var msg = form.dataset.confirm || "Are you sure?";
-        if (!window.confirm(msg)) {
-            e.preventDefault();
-        }
+    // ---- Confirm delete forms ----
+    document.querySelectorAll("form.delete-form").forEach(function (form) {
+        form.addEventListener("submit", function (e) {
+            var msg = form.dataset.confirm || "Are you sure?";
+            if (!window.confirm(msg)) {
+                e.preventDefault();
+            }
+        });
     });
+
+    // ---- Chart.js: Dashboard ----
+    var dashEl = document.getElementById("dashboard-chart-data");
+    if (dashEl && window.Chart) {
+        var data = JSON.parse(dashEl.textContent);
+
+        // Palette
+        var palette = [
+            "#4F46E5", "#10B981", "#EF4444", "#F59E0B",
+            "#6366F1", "#8B5CF6", "#06B6D4", "#EC4899",
+            "#84CC16", "#F97316"
+        ];
+
+        // Pie chart: spending by category
+        var catCanvas = document.getElementById("categoryChart");
+        if (catCanvas && data.category_labels && data.category_labels.length) {
+            new Chart(catCanvas, {
+                type: "doughnut",
+                data: {
+                    labels: data.category_labels,
+                    datasets: [{
+                        data: data.category_values,
+                        backgroundColor: palette.slice(0, data.category_labels.length),
+                        borderWidth: 0,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                font: { family: "Inter", size: 12 },
+                                padding: 12,
+                                usePointStyle: true,
+                            },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    var v = ctx.parsed || 0;
+                                    var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
+                                    var pct = total > 0 ? ((v / total) * 100).toFixed(1) : "0.0";
+                                    return ctx.label + ": ₦" + v.toLocaleString() + " (" + pct + "%)";
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+        }
+
+        // Bar chart: income vs expenses last 6 months
+        var monthlyCanvas = document.getElementById("monthlyChart");
+        if (monthlyCanvas) {
+            new Chart(monthlyCanvas, {
+                type: "bar",
+                data: {
+                    labels: data.monthly_labels,
+                    datasets: [
+                        {
+                            label: "Income",
+                            data: data.monthly_income,
+                            backgroundColor: "#10B981",
+                            borderRadius: 6,
+                        },
+                        {
+                            label: "Expenses",
+                            data: data.monthly_expense,
+                            backgroundColor: "#EF4444",
+                            borderRadius: 6,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                font: { family: "Inter", size: 12 },
+                                usePointStyle: true,
+                            },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    return ctx.dataset.label + ": ₦" + (ctx.parsed.y || 0).toLocaleString();
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { family: "Inter" } } },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { family: "Inter" },
+                                callback: function (v) { return "₦" + v.toLocaleString(); },
+                            },
+                        },
+                    },
+                },
+            });
+        }
+    }
+
+    // ---- Chart.js: Reports ----
+    var reportEl = document.getElementById("report-chart-data");
+    if (reportEl && window.Chart) {
+        var rdata = JSON.parse(reportEl.textContent);
+
+        var palette = [
+            "#4F46E5", "#10B981", "#EF4444", "#F59E0B",
+            "#6366F1", "#8B5CF6", "#06B6D4", "#EC4899",
+            "#84CC16", "#F97316"
+        ];
+
+        // Pie: category breakdown
+        var reportCatCanvas = document.getElementById("reportCategoryChart");
+        if (reportCatCanvas && rdata.category_labels && rdata.category_labels.length) {
+            new Chart(reportCatCanvas, {
+                type: "doughnut",
+                data: {
+                    labels: rdata.category_labels,
+                    datasets: [{
+                        data: rdata.category_values,
+                        backgroundColor: palette.slice(0, rdata.category_labels.length),
+                        borderWidth: 0,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                font: { family: "Inter", size: 12 },
+                                padding: 12,
+                                usePointStyle: true,
+                            },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    var v = ctx.parsed || 0;
+                                    var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
+                                    var pct = total > 0 ? ((v / total) * 100).toFixed(1) : "0.0";
+                                    return ctx.label + ": ₦" + v.toLocaleString() + " (" + pct + "%)";
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+        }
+
+        // Line: expense trend over time
+        var trendCanvas = document.getElementById("trendChart");
+        if (trendCanvas && rdata.trend_labels && rdata.trend_labels.length) {
+            new Chart(trendCanvas, {
+                type: "line",
+                data: {
+                    labels: rdata.trend_labels,
+                    datasets: [{
+                        label: "Daily Expenses",
+                        data: rdata.trend_values,
+                        borderColor: "#4F46E5",
+                        backgroundColor: "rgba(79, 70, 229, 0.12)",
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointBackgroundColor: "#4F46E5",
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    return "₦" + (ctx.parsed.y || 0).toLocaleString();
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { family: "Inter" } } },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { family: "Inter" },
+                                callback: function (v) { return "₦" + v.toLocaleString(); },
+                            },
+                        },
+                    },
+                },
+            });
+        }
+    }
 });

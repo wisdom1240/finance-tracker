@@ -15,7 +15,7 @@
         <div class="filter-row">
             <div class="filter-field filter-field-wide">
                 <label class="form-label" for="range">Range</label>
-                <select class="form-select" name="range" id="range" onchange="document.getElementById('customRange').style.display = this.value === 'custom' ? 'grid' : 'none';">
+                <select class="form-select" name="range" id="range">
                     <option value="this_month" {% if filters.range == 'this_month' %}selected{% endif %}>This month</option>
                     <option value="last_month" {% if filters.range == 'last_month' %}selected{% endif %}>Last month</option>
                     <option value="this_year"  {% if filters.range == 'this_year'  %}selected{% endif %}>This year</option>
@@ -68,6 +68,34 @@
     </p>
 </section>
 
+<div class="chart-grid mt-6">
+    <div class="card chart-card">
+        <h3 class="card-title">Spending by Category</h3>
+        {% if category_breakdown %}
+            <div class="chart-container">
+                <canvas id="reportCategoryChart"></canvas>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>No expenses in this range.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="card chart-card">
+        <h3 class="card-title">Expense Trend Over Time</h3>
+        {% if trend_labels and trend_values %}
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>Not enough data for a trend.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
 {% if category_breakdown %}
     <div class="card mt-6">
         <h3 class="card-title">Spending by Category</h3>
@@ -78,8 +106,7 @@
                         <span class="badge badge-category">{{ c.category_name }}</span>
                     </div>
                     <div class="breakdown-bar">
-                        <div class="breakdown-bar-fill"
-                             style="width: {{ c.percent }}%"></div>
+                        <div class="breakdown-bar-fill" style="width: {{ c.percent }}%"></div>
                     </div>
                     <div class="breakdown-value">
                         ₦{{ "{:,.2f}".format(c.total) }}
@@ -87,12 +114,6 @@
                     </div>
                 </div>
             {% endfor %}
-        </div>
-    </div>
-{% else %}
-    <div class="card mt-6">
-        <div class="empty-state">
-            <p>No expense transactions in this range.</p>
         </div>
     </div>
 {% endif %}
@@ -107,8 +128,7 @@
                         <span class="badge badge-category">{{ c.category_name }}</span>
                     </div>
                     <div class="breakdown-bar">
-                        <div class="breakdown-bar-fill breakdown-bar-success"
-                             style="width: {{ c.percent }}%"></div>
+                        <div class="breakdown-bar-fill breakdown-bar-success" style="width: {{ c.percent }}%"></div>
                     </div>
                     <div class="breakdown-value">
                         ₦{{ "{:,.2f}".format(c.total) }}
@@ -119,4 +139,14 @@
         </div>
     </div>
 {% endif %}
+
+{# --------- Chart data as JSON, safely embedded --------- #}
+<script id="report-chart-data" type="application/json">
+{{ {
+    "category_labels": category_labels,
+    "category_values": category_values,
+    "trend_labels": trend_labels,
+    "trend_values": trend_values
+} | tojson }}
+</script>
 {% endblock %}
