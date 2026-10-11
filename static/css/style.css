@@ -1675,3 +1675,45 @@ button[disabled]:hover {
         justify-content: center;
     }
 }
+
+/* ============================================================
+   32. RESPONSIVE FIX — prevent page-wide horizontal scroll
+   ============================================================ */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.container {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+    .table-wrap {
+        max-width: calc(100vw - 2rem);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .page-header h1,
+    .dashboard-header h1 {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    .btn {
+        white-space: normal;
+        text-align: center;
+        word-break: break-word;
+        max-width: 100%;
+    }
+
+    .card,
+    .metric,
+    .chart-card,
+    .auth-card {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+}
