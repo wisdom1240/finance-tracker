@@ -1577,3 +1577,38 @@ img {
         transition: none !important;
     }
 }
+
+
+/* ============================================================
+   30. UX POLISH — scrolled nav, transitions, feedback
+   ============================================================ */
+
+/* Sticky nav gets a subtle shadow when you scroll down */
+.site-header {
+    transition: box-shadow var(--transition), background var(--transition);
+}
+
+.site-header.scrolled {
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.15);
+    background: linear-gradient(135deg, #090E1C 0%, #1A1740 100%);
+}
+
+/* Button loading state */
+button[disabled],
+button[disabled]:hover {
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+/* Flash messages: smoother cursor + transition */
+.flash {
+    cursor: pointer;
+    transition: opacity 200ms ease, transform 200ms ease;
+}
+
+/* Focus ring: smoother */
+:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    transition: outline-offset 120ms ease;
+}

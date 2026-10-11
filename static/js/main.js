@@ -1,9 +1,11 @@
 // main.js — Finance Tracker
-// Mobile nav, dynamic form helpers, Chart.js rendering, and mobile polish.
+// Mobile nav, dynamic form helpers, Chart.js rendering, and UX polish.
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    // ---- Mobile nav toggle ----
+    // ============================================================
+    // 1. MOBILE NAV
+    // ============================================================
     var toggle = document.querySelector(".nav-toggle");
     var links = document.querySelector(".nav-links");
 
@@ -13,7 +15,6 @@ document.addEventListener("DOMContentLoaded", function () {
             toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
         });
 
-        // Auto-close the menu when a link is tapped
         links.querySelectorAll("a").forEach(function (a) {
             a.addEventListener("click", function () {
                 links.classList.remove("open");
@@ -21,7 +22,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // Close the menu if the viewport grows past mobile (avoid stuck-open state)
         window.addEventListener("resize", function () {
             if (window.innerWidth > 768) {
                 links.classList.remove("open");
@@ -30,7 +30,151 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // ---- Dynamic category loading on transaction forms ----
+    // ============================================================
+    // 2. STICKY NAV SHADOW ON SCROLL
+    // ============================================================
+    var header = document.querySelector(".site-header");
+    if (header) {
+        function updateHeaderShadow() {
+            if (window.scrollY > 8) {
+                header.classList.add("scrolled");
+            } else {
+                header.classList.remove("scrolled");
+            }
+        }
+        window.addEventListener("scroll", updateHeaderShadow, { passive: true });
+        updateHeaderShadow();
+    }
+
+    // ============================================================
+    // 3. FLASH MESSAGES — auto-dismiss + click-to-close
+    // ============================================================
+    document.querySelectorAll(".flash").forEach(function (flash) {
+        // Click to close
+        flash.style.cursor = "pointer";
+        flash.addEventListener("click", function () {
+            dismissFlash(flash);
+        });
+
+        // Auto-dismiss after 4s for success/info (keep errors/warnings visible)
+        var isError = flash.classList.contains("flash-error") ||
+                      flash.classList.contains("flash-danger") ||
+                      flash.classList.contains("flash-warning");
+        if (!isError) {
+            setTimeout(function () {
+                dismissFlash(flash);
+            }, 4000);
+        }
+    });
+
+    function dismissFlash(el) {
+        el.style.transition = "opacity 240ms ease, transform 240ms ease";
+        el.style.opacity = "0";
+        el.style.transform = "translateY(-6px)";
+        setTimeout(function () {
+            if (el.parentNode) { el.parentNode.removeChild(el); }
+        }, 260);
+    }
+
+    // ============================================================
+    // 4. AUTO-FOCUS FIRST INPUT ON AUTH PAGES
+    // ============================================================
+    var authCard = document.querySelector(".auth-card");
+    if (authCard) {
+        var firstInput = authCard.querySelector("input:not([type=hidden]):not([type=submit])");
+        if (firstInput) {
+            // Slight delay so the page fade-in doesn't fight focus animation
+            setTimeout(function () { firstInput.focus(); }, 120);
+        }
+    }
+
+    // ============================================================
+    // 5. LOADING STATE ON FORM SUBMIT
+    // ============================================================
+    // Applies to all forms except delete forms (which use confirm dialogs).
+    document.querySelectorAll("form").forEach(function (form) {
+        if (form.classList.contains("delete-form")) { return; }
+        if (form.classList.contains("savings-add-form")) { return; }
+
+        form.addEventListener("submit", function () {
+            // Let delete-confirm intercept first if it wants to.
+            // We just add a loading state.
+            var submitBtn = form.querySelector("button[type=submit]");
+            if (!submitBtn) { return; }
+
+            // Avoid double-submit
+            submitBtn.disabled = true;
+            submitBtn.dataset.originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = "Saving…";
+            submitBtn.style.opacity = "0.7";
+            submitBtn.style.cursor = "wait";
+        });
+    });
+
+    // ============================================================
+    // 6. WARN BEFORE LEAVING A FORM WITH UNSAVED DATA
+    // ============================================================
+    // Only for add/edit forms (they have novalidate + method=POST)
+    var dirtyForms = [];
+    document.querySelectorAll("form[method=POST]:not(.delete-form):not(.savings-add-form)").forEach(function (form) {
+        var initialState = snapshotForm(form);
+        var dirty = false;
+
+        function check() {
+            var current = snapshotForm(form);
+            dirty = current !== initialState;
+        }
+
+        form.addEventListener("input", check);
+        form.addEventListener("change", check);
+
+        // Clear the flag when submitted
+        form.addEventListener("submit", function () {
+            dirty = false;
+        });
+
+        dirtyForms.push(function () { return dirty; });
+    });
+
+    window.addEventListener("beforeunload", function (e) {
+        var anyDirty = dirtyForms.some(function (fn) { return fn(); });
+        if (anyDirty) {
+            e.preventDefault();
+            e.returnValue = "";
+            return "";
+        }
+    });
+
+    function snapshotForm(form) {
+        var parts = [];
+        form.querySelectorAll("input, select, textarea").forEach(function (el) {
+            if (el.type === "hidden" || el.name === "csrf_token") { return; }
+            if (el.type === "checkbox" || el.type === "radio") {
+                if (el.checked) {
+                    parts.push(el.name + "=" + el.value);
+                }
+            } else {
+                parts.push(el.name + "=" + el.value);
+            }
+        });
+        return parts.join("|");
+    }
+
+    // ============================================================
+    // 7. CONFIRM DELETE FORMS
+    // ============================================================
+    document.querySelectorAll("form.delete-form").forEach(function (form) {
+        form.addEventListener("submit", function (e) {
+            var msg = form.dataset.confirm || "Are you sure?";
+            if (!window.confirm(msg)) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    // ============================================================
+    // 8. DYNAMIC CATEGORY LOADING ON TRANSACTION FORMS
+    // ============================================================
     var typeInputs = document.querySelectorAll('input[name="type"]');
     var categorySelect = document.getElementById("category_id");
 
@@ -61,17 +205,9 @@ document.addEventListener("DOMContentLoaded", function () {
         filterCategories();
     }
 
-    // ---- Confirm delete forms ----
-    document.querySelectorAll("form.delete-form").forEach(function (form) {
-        form.addEventListener("submit", function (e) {
-            var msg = form.dataset.confirm || "Are you sure?";
-            if (!window.confirm(msg)) {
-                e.preventDefault();
-            }
-        });
-    });
-
-    // ---- Chart.js: Dashboard ----
+    // ============================================================
+    // 9. CHART.JS: DASHBOARD
+    // ============================================================
     var dashEl = document.getElementById("dashboard-chart-data");
     if (dashEl && window.Chart) {
         var data = JSON.parse(dashEl.textContent);
@@ -176,7 +312,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // ---- Chart.js: Reports ----
+    // ============================================================
+    // 10. CHART.JS: REPORTS
+    // ============================================================
     var reportEl = document.getElementById("report-chart-data");
     if (reportEl && window.Chart) {
         var rdata = JSON.parse(reportEl.textContent);
