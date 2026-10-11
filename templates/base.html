@@ -19,9 +19,11 @@
         <nav class="nav-bar">
             <a class="brand" href="{{ url_for('index') }}">💰 Finance Tracker</a>
 
-            <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+            <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false" type="button">
+                <span class="nav-toggle-icon">☰</span>
+            </button>
 
-            <ul class="nav-links">
+            <ul class="nav-links" id="primary-navigation">
                 <li>
                     <a href="{{ url_for('dashboard') if session.get('user_id') else url_for('login') }}">Dashboard</a>
                 </li>
@@ -48,7 +50,7 @@
         </nav>
     </header>
 
-    <main class="container">
+    <main class="container page-enter">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="flash-messages">

@@ -1189,3 +1189,391 @@ img {
         height: 220px;
     }
 }
+
+
+/* ============================================================
+   29. MOBILE POLISH & ANIMATIONS
+   ============================================================ */
+
+/* Page fade-in on load */
+.page-enter {
+    animation: pageEnter 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes pageEnter {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Smooth hamburger icon rotation when active */
+.nav-toggle {
+    font-size: 1.35rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+}
+
+.nav-toggle-icon {
+    display: inline-block;
+    transition: transform 200ms ease;
+}
+
+.nav-toggle[aria-expanded="true"] .nav-toggle-icon {
+    transform: rotate(90deg);
+}
+
+/* Mobile drawer slide-in */
+@media (max-width: 768px) {
+    .nav-links {
+        transform: translateY(-8px);
+        opacity: 0;
+        transition: opacity 180ms ease, transform 180ms ease;
+        pointer-events: none;
+    }
+
+    .nav-links.open {
+        transform: translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Bigger tap targets on mobile */
+    .nav-links a {
+        padding: var(--space-4) var(--space-6);
+        font-size: 1rem;
+    }
+
+    /* Page container: tighter padding */
+    .container {
+        padding: var(--space-5) var(--space-4);
+    }
+
+    /* Headings: comfortable on small screens */
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    h3 { font-size: 1.125rem; }
+
+    /* Metric cards stack to full width */
+    .card-row {
+        grid-template-columns: 1fr;
+    }
+
+    .metric-value {
+        font-size: 1.5rem;
+    }
+
+    /* Tables: horizontal scroll instead of squish */
+    .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        min-width: 640px;
+    }
+
+    /* Chart cards stack */
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-container {
+        height: 220px;
+    }
+
+    /* Filter forms: vertical */
+    .filter-row {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-field-wide {
+        grid-column: span 1;
+    }
+
+    /* Savings cards stack */
+    .savings-card {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .savings-add-form {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .savings-add-form .form-input-sm {
+        max-width: 100%;
+        flex: 1;
+    }
+
+    /* Breakdown rows stack */
+    .breakdown-row {
+        grid-template-columns: 1fr;
+        gap: var(--space-2);
+    }
+
+    .breakdown-value {
+        text-align: left;
+    }
+
+    /* Bigger buttons on mobile */
+    .btn {
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.9375rem;
+    }
+
+    .btn-block {
+        padding: var(--space-4);
+        font-size: 1rem;
+    }
+
+    /* Forms: comfortable padding */
+    .form-input,
+    .form-select,
+    .form-textarea {
+        padding: var(--space-3) var(--space-4);
+        font-size: 1rem;
+    }
+
+    /* Auth cards narrower padding */
+    .auth-card {
+        padding: var(--space-6) var(--space-5);
+    }
+
+    /* Page header stacks */
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .page-header .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Dashboard header stacks */
+    .dashboard-header {
+        flex-direction: column;
+    }
+
+    /* Hide scrollbars on horizontal scroll (cleaner look) */
+    .table-wrap::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .table-wrap::-webkit-scrollbar-thumb {
+        background: rgba(15, 23, 42, 0.18);
+        border-radius: 3px;
+    }
+}
+
+/* Prefer reduced motion — turn off animations for users who request it */
+@media (prefers-reduced-motion: reduce) {
+    .page-enter,
+    .nav-links,
+    .nav-toggle-icon,
+    .progress-bar,
+    .breakdown-bar-fill {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+
+/* ============================================================
+   29. MOBILE POLISH & ANIMATIONS
+   ============================================================ */
+
+/* Page fade-in on load */
+.page-enter {
+    animation: pageEnter 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes pageEnter {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Smooth hamburger icon rotation when active */
+.nav-toggle {
+    font-size: 1.35rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+}
+
+.nav-toggle-icon {
+    display: inline-block;
+    transition: transform 200ms ease;
+}
+
+.nav-toggle[aria-expanded="true"] .nav-toggle-icon {
+    transform: rotate(90deg);
+}
+
+/* Mobile drawer slide-in */
+@media (max-width: 768px) {
+    .nav-links {
+        transform: translateY(-8px);
+        opacity: 0;
+        transition: opacity 180ms ease, transform 180ms ease;
+        pointer-events: none;
+    }
+
+    .nav-links.open {
+        transform: translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Bigger tap targets on mobile */
+    .nav-links a {
+        padding: var(--space-4) var(--space-6);
+        font-size: 1rem;
+    }
+
+    /* Page container: tighter padding */
+    .container {
+        padding: var(--space-5) var(--space-4);
+    }
+
+    /* Headings: comfortable on small screens */
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    h3 { font-size: 1.125rem; }
+
+    /* Metric cards stack to full width */
+    .card-row {
+        grid-template-columns: 1fr;
+    }
+
+    .metric-value {
+        font-size: 1.5rem;
+    }
+
+    /* Tables: horizontal scroll instead of squish */
+    .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        min-width: 640px;
+    }
+
+    /* Chart cards stack */
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-container {
+        height: 220px;
+    }
+
+    /* Filter forms: vertical */
+    .filter-row {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-field-wide {
+        grid-column: span 1;
+    }
+
+    /* Savings cards stack */
+    .savings-card {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .savings-add-form {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .savings-add-form .form-input-sm {
+        max-width: 100%;
+        flex: 1;
+    }
+
+    /* Breakdown rows stack */
+    .breakdown-row {
+        grid-template-columns: 1fr;
+        gap: var(--space-2);
+    }
+
+    .breakdown-value {
+        text-align: left;
+    }
+
+    /* Bigger buttons on mobile */
+    .btn {
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.9375rem;
+    }
+
+    .btn-block {
+        padding: var(--space-4);
+        font-size: 1rem;
+    }
+
+    /* Forms: comfortable padding */
+    .form-input,
+    .form-select,
+    .form-textarea {
+        padding: var(--space-3) var(--space-4);
+        font-size: 1rem;
+    }
+
+    /* Auth cards narrower padding */
+    .auth-card {
+        padding: var(--space-6) var(--space-5);
+    }
+
+    /* Page header stacks */
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .page-header .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Dashboard header stacks */
+    .dashboard-header {
+        flex-direction: column;
+    }
+
+    /* Cleaner scrollbars on horizontal tables */
+    .table-wrap::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .table-wrap::-webkit-scrollbar-thumb {
+        background: rgba(15, 23, 42, 0.18);
+        border-radius: 3px;
+    }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .page-enter,
+    .nav-links,
+    .nav-toggle-icon,
+    .progress-bar,
+    .breakdown-bar-fill {
+        animation: none !important;
+        transition: none !important;
+    }
+}

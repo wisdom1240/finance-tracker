@@ -212,7 +212,6 @@ def create_app():
         db = get_db()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # Totals
         cur.execute(
             "SELECT "
             "  COALESCE(SUM(CASE WHEN type='INCOME'  THEN amount END), 0) AS income, "
@@ -228,7 +227,6 @@ def create_app():
         transaction_count = row["tx_count"]
         net = total_income - total_expenses
 
-        # Category breakdown (expense)
         cur.execute(
             "SELECT c.name AS category_name, SUM(t.amount) AS total "
             "FROM transactions t "
@@ -241,7 +239,6 @@ def create_app():
         )
         expense_rows = cur.fetchall()
 
-        # Income breakdown
         cur.execute(
             "SELECT c.name AS category_name, SUM(t.amount) AS total "
             "FROM transactions t "
@@ -254,7 +251,6 @@ def create_app():
         )
         income_rows = cur.fetchall()
 
-        # Trend: daily expenses in range
         cur.execute(
             "SELECT transaction_date, SUM(amount) AS total "
             "FROM transactions "
@@ -373,9 +369,6 @@ def create_app():
                      "from": f_from, "to": f_to, "q": f_q},
         )
 
-    # ----------------------------------------------------------------
-    # Add / Edit / Delete Transaction
-    # ----------------------------------------------------------------
     @app.route("/transactions/add", methods=["GET", "POST"])
     @login_required
     def add_transaction():
@@ -1018,4 +1011,6 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    # host="0.0.0.0" allows access from other devices on your WiFi (e.g. your phone).
+    # For local-only development you can change this back to "127.0.0.1".
+    app.run(host="0.0.0.0", port=5000, debug=True)

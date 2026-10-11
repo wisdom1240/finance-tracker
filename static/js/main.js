@@ -1,13 +1,32 @@
 // main.js — Finance Tracker
-// Mobile nav toggle, dynamic form helpers, and Chart.js rendering.
+// Mobile nav, dynamic form helpers, Chart.js rendering, and mobile polish.
 
 document.addEventListener("DOMContentLoaded", function () {
+
     // ---- Mobile nav toggle ----
     var toggle = document.querySelector(".nav-toggle");
     var links = document.querySelector(".nav-links");
+
     if (toggle && links) {
         toggle.addEventListener("click", function () {
-            links.classList.toggle("open");
+            var isOpen = links.classList.toggle("open");
+            toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        });
+
+        // Auto-close the menu when a link is tapped
+        links.querySelectorAll("a").forEach(function (a) {
+            a.addEventListener("click", function () {
+                links.classList.remove("open");
+                toggle.setAttribute("aria-expanded", "false");
+            });
+        });
+
+        // Close the menu if the viewport grows past mobile (avoid stuck-open state)
+        window.addEventListener("resize", function () {
+            if (window.innerWidth > 768) {
+                links.classList.remove("open");
+                toggle.setAttribute("aria-expanded", "false");
+            }
         });
     }
 
@@ -57,14 +76,12 @@ document.addEventListener("DOMContentLoaded", function () {
     if (dashEl && window.Chart) {
         var data = JSON.parse(dashEl.textContent);
 
-        // Palette
         var palette = [
             "#4F46E5", "#10B981", "#EF4444", "#F59E0B",
             "#6366F1", "#8B5CF6", "#06B6D4", "#EC4899",
             "#84CC16", "#F97316"
         ];
 
-        // Pie chart: spending by category
         var catCanvas = document.getElementById("categoryChart");
         if (catCanvas && data.category_labels && data.category_labels.length) {
             new Chart(catCanvas, {
@@ -104,7 +121,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        // Bar chart: income vs expenses last 6 months
         var monthlyCanvas = document.getElementById("monthlyChart");
         if (monthlyCanvas) {
             new Chart(monthlyCanvas, {
@@ -171,7 +187,6 @@ document.addEventListener("DOMContentLoaded", function () {
             "#84CC16", "#F97316"
         ];
 
-        // Pie: category breakdown
         var reportCatCanvas = document.getElementById("reportCategoryChart");
         if (reportCatCanvas && rdata.category_labels && rdata.category_labels.length) {
             new Chart(reportCatCanvas, {
@@ -211,7 +226,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        // Line: expense trend over time
         var trendCanvas = document.getElementById("trendChart");
         if (trendCanvas && rdata.trend_labels && rdata.trend_labels.length) {
             new Chart(trendCanvas, {
