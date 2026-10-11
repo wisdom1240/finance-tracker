@@ -1717,3 +1717,170 @@ html, body {
         overflow-wrap: anywhere;
     }
 }
+
+/* ============================================================
+   33. MICRO-INTERACTIONS & FINAL POLISH
+   ============================================================ */
+
+/* Smooth scroll behavior globally */
+html {
+    scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+/* Selection color matches brand */
+::selection {
+    background: rgba(79, 70, 229, 0.25);
+    color: var(--color-text);
+}
+
+/* Button press feedback */
+.btn:active {
+    transform: translateY(0) scale(0.98);
+    transition: transform 80ms ease;
+}
+
+/* Chart loading skeleton */
+.chart-loading {
+    position: relative;
+    background:
+        linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(79, 70, 229, 0.08) 40%,
+            rgba(79, 70, 229, 0.14) 50%,
+            rgba(79, 70, 229, 0.08) 60%,
+            transparent 100%
+        );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite;
+    border-radius: var(--radius);
+}
+
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.chart-loading canvas {
+    opacity: 0;
+    transition: opacity 200ms ease;
+}
+
+/* Smooth link underline animation */
+a.link-action {
+    position: relative;
+}
+
+a.link-action::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 180ms ease;
+}
+
+a.link-action:hover::after {
+    transform: scaleX(1);
+}
+
+/* Table row hover feedback */
+tbody tr {
+    transition: background 120ms ease;
+}
+
+/* Smooth focus transition */
+input:focus,
+select:focus,
+textarea:focus {
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+/* Disable hover lift when user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .metric:hover,
+    .card:hover,
+    .savings-card:hover {
+        transform: none !important;
+    }
+    .page-enter,
+    .progress-bar,
+    .breakdown-bar-fill {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* ---- Print stylesheet ---- */
+@media print {
+    .site-header,
+    .site-footer,
+    .nav-links,
+    .nav-toggle,
+    .btn,
+    .link-action,
+    .delete-form,
+    .filter-card,
+    .flash-messages {
+        display: none !important;
+    }
+
+    body {
+        background: #fff;
+        color: #000;
+    }
+
+    .container {
+        max-width: 100%;
+        padding: 0;
+    }
+
+    .card,
+    .metric,
+    .chart-card,
+    .table-wrap {
+        box-shadow: none !important;
+        border: 1px solid #ddd;
+        page-break-inside: avoid;
+        background: #fff;
+    }
+
+    a {
+        color: #000;
+        text-decoration: underline;
+    }
+
+    table {
+        font-size: 11pt;
+    }
+}
+
+/* ---- Sticky footer for short pages ---- */
+html, body {
+    min-height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main.container {
+    flex: 1 0 auto;
+}
+
+.site-footer {
+    flex-shrink: 0;
+    margin-top: var(--space-12);
+}

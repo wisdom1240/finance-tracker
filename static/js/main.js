@@ -409,3 +409,74 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 });
+
+// ============================================================
+// 33. MICRO-INTERACTIONS
+// ============================================================
+
+// ---- Staggered fade-in for cards, metrics, table rows ----
+document.addEventListener("DOMContentLoaded", function () {
+    var staggerTargets = document.querySelectorAll(
+        ".metric, .card, .chart-card, .savings-card, .flash, tbody tr"
+    );
+
+    staggerTargets.forEach(function (el, i) {
+        // Skip elements that are already visible in the first viewport (avoid jank)
+        el.style.opacity = "0";
+        el.style.transform = "translateY(6px)";
+        el.style.transition = "opacity 300ms ease, transform 300ms ease";
+
+        // Stagger in intervals of 40ms, capped so it never feels slow
+        var delay = Math.min(i * 40, 600);
+
+        setTimeout(function () {
+            el.style.opacity = "1";
+            el.style.transform = "translateY(0)";
+        }, delay);
+    });
+});
+
+// ---- Smooth scroll-to-top on route change ----
+// When a new page loads, if the previous URL was different, scroll to top.
+(function () {
+    var lastPath = sessionStorage.getItem("lastPath") || "";
+    var currentPath = window.location.pathname + window.location.search;
+
+    if (lastPath && lastPath !== currentPath) {
+        // New page loaded — scroll to top smoothly (or instantly on first load)
+        window.scrollTo({ top: 0, behavior: "instant" });
+    }
+
+    sessionStorage.setItem("lastPath", currentPath);
+})();
+
+// ---- Smooth anchor scroll (for any in-page links) ----
+document.addEventListener("click", function (e) {
+    var link = e.target.closest('a[href^="#"]');
+    if (!link) { return; }
+    var href = link.getAttribute("href");
+    if (href.length <= 1) { return; }
+    var target = document.querySelector(href);
+    if (!target) { return; }
+    e.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+// ---- Chart placeholder shimmer removal ----
+// The Chart.js charts render into <canvas>. We add a class to the parent
+// that shows a shimmer, then remove it when Chart is ready.
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".chart-container").forEach(function (el) {
+        el.classList.add("chart-loading");
+        // Chart.js is loaded with `defer`, so it'll be ready shortly.
+        // Give it up to 800ms to initialize.
+        var attempts = 0;
+        var check = setInterval(function () {
+            attempts++;
+            if (window.Chart || attempts > 40) {
+                clearInterval(check);
+                el.classList.remove("chart-loading");
+            }
+        }, 20);
+    });
+});
