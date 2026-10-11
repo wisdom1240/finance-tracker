@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{{ code }} — Finance Tracker{% endblock %}
+
+{% block content %}
+<section class="error-page">
+    <div class="error-code">{{ code }}</div>
+
+    {% if code == 404 %}
+        <h1>Page not found</h1>
+        <p class="text-muted">
+            The page you're looking for doesn't exist or may have been moved.
+        </p>
+    {% elif code == 500 %}
+        <h1>Something went wrong</h1>
+        <p class="text-muted">
+            We hit an unexpected error. Please try again in a moment.
+        </p>
+    {% else %}
+        <h1>Unexpected error</h1>
+        <p class="text-muted">
+            {{ message or "Something did not go as planned." }}
+        </p>
+    {% endif %}
+
+    <div class="error-actions">
+        <a href="{{ url_for('dashboard') if session.get('user_id') else url_for('index') }}"
+           class="btn btn-primary">
+            {% if session.get('user_id') %}Back to dashboard{% else %}Go home{% endif %}
+        </a>
+        <a href="{{ url_for('transactions') if session.get('user_id') else url_for('login') }}"
+           class="btn btn-ghost">
+            {% if session.get('user_id') %}View transactions{% else %}Sign in{% endif %}
+        </a>
+    </div>
+</section>
+{% endblock %}

@@ -79,6 +79,17 @@ def create_app():
     init_db(app)
     csrf = CSRFProtect(app)
 
+    # ----------------------------------------------------------------
+    # Error handlers
+    # ----------------------------------------------------------------
+    @app.errorhandler(404)
+    def not_found(error):
+        return render_template("error.html", code=404), 404
+
+    @app.errorhandler(500)
+    def server_error(error):
+        return render_template("error.html", code=500), 500
+
     @app.before_request
     def load_user():
         g.user_id = session.get("user_id")
@@ -125,9 +136,6 @@ def create_app():
         )
         recent_transactions = cur.fetchall()
 
-        # ---- Chart data ----
-
-        # Pie: expenses this month by category
         today = date.today()
         month_start = today.replace(day=1)
         last_day = monthrange(today.year, today.month)[1]
@@ -147,7 +155,6 @@ def create_app():
         category_labels = [r["category_name"] for r in cat_rows]
         category_values = _float_list([r["total"] for r in cat_rows])
 
-        # Bar: income vs expenses for last 6 months
         monthly_labels = []
         monthly_income = []
         monthly_expense = []
@@ -194,7 +201,7 @@ def create_app():
         )
 
     # ----------------------------------------------------------------
-    # Reports (with chart data)
+    # Reports
     # ----------------------------------------------------------------
     @app.route("/reports")
     @login_required
@@ -233,8 +240,7 @@ def create_app():
             "JOIN categories c ON c.id = t.category_id "
             "WHERE t.user_id = %s AND t.type = 'EXPENSE' "
             "  AND t.transaction_date >= %s AND t.transaction_date <= %s "
-            "GROUP BY c.name "
-            "ORDER BY total DESC",
+            "GROUP BY c.name ORDER BY total DESC",
             (user_id, start, end),
         )
         expense_rows = cur.fetchall()
@@ -245,8 +251,7 @@ def create_app():
             "JOIN categories c ON c.id = t.category_id "
             "WHERE t.user_id = %s AND t.type = 'INCOME' "
             "  AND t.transaction_date >= %s AND t.transaction_date <= %s "
-            "GROUP BY c.name "
-            "ORDER BY total DESC",
+            "GROUP BY c.name ORDER BY total DESC",
             (user_id, start, end),
         )
         income_rows = cur.fetchall()
@@ -256,12 +261,10 @@ def create_app():
             "FROM transactions "
             "WHERE user_id = %s AND type = 'EXPENSE' "
             "  AND transaction_date >= %s AND transaction_date <= %s "
-            "GROUP BY transaction_date "
-            "ORDER BY transaction_date",
+            "GROUP BY transaction_date ORDER BY transaction_date",
             (user_id, start, end),
         )
         trend_rows = cur.fetchall()
-
         cur.close()
 
         category_breakdown = []
@@ -1011,6 +1014,4 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    # host="0.0.0.0" allows access from other devices on your WiFi (e.g. your phone).
-    # For local-only development you can change this back to "127.0.0.1".
     app.run(host="0.0.0.0", port=5000, debug=True)
